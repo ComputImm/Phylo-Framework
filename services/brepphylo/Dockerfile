@@ -40,22 +40,51 @@ RUN DOWNLOAD_STATIC_LIBV8=1 R -q -e "install.packages( \
     repos = 'https://packagemanager.posit.co/cran/2026-07-20' \
     )" \
     && R -q -e "install.packages('BiocManager', repos = 'https://packagemanager.posit.co/cran/2026-07-20'); \
+    options(repos = c(CRAN = 'https://packagemanager.posit.co/cran/2026-07-20')); \
     bioc_deps <- c('Biostrings','msa','GenomicRanges','GenomicAlignments'); \
     BiocManager::install(bioc_deps, ask = FALSE, update = FALSE); \
     stopifnot(all(bioc_deps %in% rownames(installed.packages())))"
 
-# Install BrepPhylo via codeload tarball + install_local, NOT install_github.
+# Keep native package compilation and BLAS backends within the builder's
+# process/thread budget. This also prevents GCC's make integration from
+# selecting every visible host CPU during dependency builds.
+ENV MAKEFLAGS=-j1 \
+    OMP_NUM_THREADS=1 \
+    OMP_THREAD_LIMIT=1 \
+    OPENBLAS_NUM_THREADS=1 \
+    FLEXIBLAS_NUM_THREADS=1 \
+    MKL_NUM_THREADS=1 \
+    BLIS_NUM_THREADS=1 \
+    RCPP_PARALLEL_NUM_THREADS=1
+
+# Install BrepPhylo via a codeload tarball, NOT install_github.
 # install_github goes through api.github.com which is rate-limited to 60 req/hr
 # for unauthenticated users — Docker build retries silently exhausted the quota.
 # codeload.github.com serves the raw tarball via CDN, no rate limit. stopifnot
 # at the end fails the build loudly if BrepPhylo somehow didn't install.
+# BrepPhylo's dependencies that the base image lacks come from the same dated
+# CRAN snapshot as everything else, not from the CRAN of the build day (which
+# had moved five of them by 2026-10-26); the version check covers those five.
+# Install the dependencies and BrepPhylo in separate R processes. Keeping both
+# in one remotes::install_local call retains the dependency-build heap until
+# remotes forks R CMD build and can fail with ENOMEM on constrained builders.
 ARG BREPPHYLO_COMMIT=7c52fb66e28ee3839a32633bf809f320f060c876
 RUN curl -fsSL -o /tmp/brepphylo.tar.gz \
       "https://codeload.github.com/Fraternalilab/BrepPhylo/tar.gz/${BREPPHYLO_COMMIT}" \
-    && R -q -e "stopifnot('msa' %in% rownames(installed.packages())); \
-                remotes::install_local('/tmp/brepphylo.tar.gz', dependencies = TRUE, upgrade = 'never'); \
-                stopifnot('BrepPhylo' %in% rownames(installed.packages()))" \
+    && mkdir /tmp/brepphylo-src \
+    && tar -xzf /tmp/brepphylo.tar.gz --strip-components=1 -C /tmp/brepphylo-src \
     && rm -f /tmp/brepphylo.tar.gz
+
+RUN R -q -e "options(Ncpus = 1L); \
+             stopifnot('msa' %in% rownames(installed.packages())); \
+             remotes::install_deps('/tmp/brepphylo-src', dependencies = TRUE, upgrade = 'never', \
+                                   repos = 'https://packagemanager.posit.co/cran/2026-07-20')"
+
+RUN R CMD INSTALL --no-multiarch /tmp/brepphylo-src \
+    && R -q -e "stopifnot('BrepPhylo' %in% rownames(installed.packages())); \
+                pins <- c(combinat = '0.0-8', expm = '1.0-0', optimParallel = '1.0-2', rncl = '0.8.9', vegan = '2.7-5'); \
+                stopifnot(identical(vapply(names(pins), function(p) packageDescription(p, fields = 'Version'), ''), pins))" \
+    && rm -rf /tmp/brepphylo-src
 
 # paws.storage + digest installed AFTER BrepPhylo so they don't interfere with the
 # upstream install chain. Required by services/brepphylo/object_storage.R to
@@ -75,6 +104,14 @@ RUN dnf -y upgrade --security --setopt=install_weak_deps=False \
 # The base image's Python ships pyarrow 19.0.1 (CVE-2026-25087). Nothing here
 # depends on it; raise it to the first fixed release, touching nothing else.
 RUN python3 -m pip install --no-cache-dir --no-deps pyarrow==23.0.1
+
+# BrepPhylo's class-switch analysis (cloneArborescence -> getArborescence) runs a
+# bundled Python script through reticulate, and that script needs networkx.
+# reticulate 1.42 does not pick up the system Python on its own: without
+# RETICULATE_PYTHON it tries to download a managed Python at run time and the
+# analysis fails with "Installation of Python not found".
+ENV RETICULATE_PYTHON=/usr/bin/python3
+RUN python3 -m pip install --no-cache-dir networkx==3.4.2
 
 WORKDIR /srv
 COPY validators.R /srv/validators.R
