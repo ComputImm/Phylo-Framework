@@ -115,6 +115,8 @@ files or a Dockerfile stops using its lock.
 
 - `next` 15.4.10 → 15.5.28 (same major); `eslint-config-next` to match.
 - `axios` 1.11.0 → 1.20.0.
+- `follow-redirects` (through `axios`) 1.16.1 → 1.16.2 on 2026-11-01, for
+  GHSA-mrwp-f3q8-3g9p (high), which the CI gate reported.
 - `next-auth` removed: no import, configuration or environment reference
   anywhere in the repository. This also removed `@auth/core`.
 - `mermaid` removed: no reference anywhere (documentation diagrams are

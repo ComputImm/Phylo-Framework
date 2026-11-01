@@ -57,12 +57,16 @@ jobs:
           name: unit-integration-reports
           path: coverage/
           retention-days: 30
-          if-no-files-found: error
+          # Missing reports are an error only when the job got through its steps;
+          # after an earlier failure they would just hide the real error.
+          if-no-files-found: ${{ job.status == 'success' && 'error' || 'warn' }}
       - name: Remove only test infrastructure
         if: always()
         run: docker compose -f docker-compose.test.yml --profile full down -v
   scientific-browser:
-    runs-on: ubuntu-latest
+    # Not ubuntu-latest: Playwright 1.55.1 cannot install Chromium on Ubuntu 26.04
+    # (support starts at 1.62). Move back only together with a Playwright upgrade.
+    runs-on: ubuntu-24.04
     timeout-minutes: 120
     needs: unit-integration
     steps:
@@ -114,7 +118,9 @@ jobs:
             coverage/
             test-results/
           retention-days: 30
-          if-no-files-found: error
+          # Missing reports are an error only when the job got through its steps;
+          # after an earlier failure they would just hide the real error.
+          if-no-files-found: ${{ job.status == 'success' && 'error' || 'warn' }}
       - name: Remove only test infrastructure
         if: always()
         run: |
