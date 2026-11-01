@@ -62,17 +62,23 @@ async function expectNoSidewaysScroll(page: Page) {
   }
 }
 
-/** Touch a point and drag, as a finger does. Needs a touch-enabled project. */
+/**
+ * Touch a point and drag, as a finger does. Needs a touch-enabled project.
+ * Not Input.synthesizeScrollGesture: on Linux it sends the page no touchmove, so
+ * d3-zoom never sees the drag and a sideways swipe does not page.
+ */
 async function swipe(page: Page, from: {x: number; y: number}, delta: {x?: number; y?: number}) {
   const session = await page.context().newCDPSession(page);
-  await session.send('Input.synthesizeScrollGesture', {
-    x: from.x,
-    y: from.y,
-    xDistance: delta.x ?? 0,
-    yDistance: delta.y ?? 0,
-    speed: 800,
-    gestureSourceType: 'touch',
-  });
+  const steps = 10;
+  await session.send('Input.dispatchTouchEvent', {type: 'touchStart', touchPoints: [from]});
+  for (let step = 1; step <= steps; step++) {
+    await session.send('Input.dispatchTouchEvent', {
+      type: 'touchMove',
+      touchPoints: [{x: from.x + (delta.x ?? 0) * step / steps, y: from.y + (delta.y ?? 0) * step / steps}],
+    });
+    await page.waitForTimeout(16);
+  }
+  await session.send('Input.dispatchTouchEvent', {type: 'touchEnd', touchPoints: []});
   await session.detach();
 }
 
@@ -343,7 +349,9 @@ test.describe('Sequence Trace', () => {
     const tree = page.locator('svg[role="img"]').first();
     await tree.waitFor();
     await tree.scrollIntoViewIfNeeded();
-    await swipe(page, await center(page, 'svg[role="img"]'), {x: -250});
+    // Start right of centre, so the finger stays on the screen.
+    const {x, y} = await center(page, 'svg[role="img"]');
+    await swipe(page, {x: x + 100, y}, {x: -250});
     await expect(chip).toHaveAttribute('aria-current', 'true');
   });
 
