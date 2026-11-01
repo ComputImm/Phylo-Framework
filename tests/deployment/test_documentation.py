@@ -428,7 +428,7 @@ def test_the_example_configuration_can_be_read_by_a_shell(shell):
     done = subprocess.run([shell, "-c", script, shell, str(ROOT / ".env.example")], capture_output=True, text=True,
                           env={"PATH": "/usr/bin:/bin"})
     assert done.returncode == 0 and done.stderr == "", done.stderr
-    assert done.stdout == "Phylo Runner <phylo@example.org>|10m|8004"            # including what comes last in the file
+    assert done.stdout == "Phylo Framework <phylo@example.org>|10m|8004"            # including what comes last in the file
 
 
 def test_every_reader_of_the_example_configuration_sees_the_same_values():

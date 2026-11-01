@@ -27,7 +27,7 @@ export const VALUE_PROPS: ValueProp[] = [
     id: "unified-ui",
     title: "One friendly interface for four methods",
     body:
-      "The raw tools have no user-friendly environment and are awkward to install and run. Phylo Runner wraps Dowser, GCtree, BrepPhylo and ClonalTree behind a single guided form.",
+      "The raw tools have no user-friendly environment and are awkward to install and run. Phylo Framework wraps Dowser, GCtree, BrepPhylo and ClonalTree behind a single guided form.",
     href: "/dashboard",
     linkLabel: "Open the dashboard",
   },

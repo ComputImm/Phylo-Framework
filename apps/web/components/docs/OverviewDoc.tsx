@@ -12,9 +12,9 @@ export function OverviewDoc() {
     <article className="mx-auto w-full max-w-5xl space-y-12">
       {/* Intro */}
       <header className="space-y-4">
-        <h1 className="text-3xl font-bold tracking-tight">Phylo Runner documentation</h1>
+        <h1 className="text-3xl font-bold tracking-tight">Phylo Framework documentation</h1>
         <p className="max-w-3xl text-lg leading-relaxed text-muted-foreground">
-          Phylo Runner is a single, friendly home for four B-cell phylogenetics methods — Dowser,
+          Phylo Framework is a single, friendly home for four B-cell phylogenetics methods — Dowser,
           GCtree, BrepPhylo and ClonalTree. Upload your data once, configure a method through a guided
           form, and let runs execute on the server. This guide explains what the package gives you over
           the raw tools, then documents each method&apos;s inputs and form fields in detail.
@@ -34,9 +34,9 @@ export function OverviewDoc() {
       {/* Why use it */}
       <section className="space-y-6">
         <div className="space-y-1">
-          <h2 className="text-2xl font-semibold tracking-tight">Why use Phylo Runner?</h2>
+          <h2 className="text-2xl font-semibold tracking-tight">Why use Phylo Framework?</h2>
           <p className="text-muted-foreground">
-            The raw methods are powerful but hard to work with. Phylo Runner removes the friction.
+            The raw methods are powerful but hard to work with. Phylo Framework removes the friction.
           </p>
         </div>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

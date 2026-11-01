@@ -219,6 +219,17 @@ function AuthPageContent() {
               {googleLoading ? "Redirecting…" : "Continue with Google"}
             </Button>
           </form>
+          <p className="mt-4 text-center text-xs leading-5 text-muted-foreground">
+            By continuing, you agree to our{" "}
+            <Link href="/terms" className="underline underline-offset-2 hover:text-foreground">
+              Terms of Service
+            </Link>{" "}
+            and acknowledge our{" "}
+            <Link href="/privacy" className="underline underline-offset-2 hover:text-foreground">
+              Privacy Policy
+            </Link>
+            .
+          </p>
           <p className="mt-4 text-center text-sm text-muted-foreground">
             {mode === "login" ? (
               <>

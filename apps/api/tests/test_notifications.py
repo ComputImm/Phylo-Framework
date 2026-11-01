@@ -67,7 +67,7 @@ async def sink(monkeypatch, db):
         monkeypatch.setenv("SMTP_HOST", "127.0.0.1")
         monkeypatch.setenv("SMTP_PORT", str(server.port))
         monkeypatch.setenv("SMTP_SECURITY", "none")
-        monkeypatch.setenv("SMTP_FROM", "Phylo Runner <phylo@lab.example>")
+        monkeypatch.setenv("SMTP_FROM", "Phylo Framework <phylo@lab.example>")
         monkeypatch.setenv("SMTP_TIMEOUT_SECONDS", "3")
         yield server
 
@@ -283,7 +283,7 @@ async def test_done_email_is_sent_once_to_the_owner_with_a_link_to_the_results(d
     assert await notifier.deliver_due() == {"sent": 1}
     (mail,) = sink.messages
     assert mail["recipients"] == [await owner_email(db, run_id)]
-    assert mail["subject"] == "Your GCtree run has finished" and mail["from"] == "Phylo Runner <phylo@lab.example>"
+    assert mail["subject"] == "Your GCtree run has finished" and mail["from"] == "Phylo Framework <phylo@lab.example>"
     assert f"https://phylo.lab.example/dashboard?runId={run_id}" in mail["text"]
     assert "results are ready" in mail["text"] and str(run_id) in mail["html"]
     (row,) = await outbox(db, run_id)

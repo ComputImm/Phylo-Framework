@@ -5,12 +5,13 @@ import { cn } from "@/lib/utils";
 type PhyloLogoProps = {
   collapsed?: boolean;
   className?: string;
+  href?: string;
 };
 
-export function PhyloLogo({ collapsed = false, className }: PhyloLogoProps) {
+export function PhyloLogo({ collapsed = false, className, href = "/dashboard" }: PhyloLogoProps) {
   return (
     <Link
-      href="/dashboard"
+      href={href}
       className={cn(
         "group flex items-center gap-2.5 rounded-lg transition-colors hover:text-primary min-w-0",
         collapsed ? "justify-center px-1" : "px-1",
@@ -24,7 +25,7 @@ export function PhyloLogo({ collapsed = false, className }: PhyloLogoProps) {
       {!collapsed && (
         <span className="flex min-w-0 flex-col leading-tight">
           <span className="truncate text-sm font-semibold tracking-tight text-foreground group-hover:text-primary">
-            PhyloFramework
+            Phylo Framework
           </span>
           <span className="truncate text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
             BCR Lineage Platform

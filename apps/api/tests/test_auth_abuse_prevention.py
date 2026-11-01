@@ -149,7 +149,7 @@ async def mail(monkeypatch):
     """A mail server; with it configured, email verification is required (auto)."""
     async with SmtpSink() as sink:
         for name, value in {"SMTP_HOST": "127.0.0.1", "SMTP_PORT": str(sink.port), "SMTP_SECURITY": "none",
-                            "SMTP_FROM": "Phylo Runner <phylo@lab.example>", "SMTP_TIMEOUT_SECONDS": "3",
+                            "SMTP_FROM": "Phylo Framework <phylo@lab.example>", "SMTP_TIMEOUT_SECONDS": "3",
                             "EMAIL_VERIFICATION": "auto"}.items():
             monkeypatch.setenv(name, value)
         monkeypatch.setattr(routers, "FRONTEND_URL", "https://phylo.lab.example")
@@ -402,7 +402,7 @@ async def test_sign_up_sends_a_link_and_the_account_works_once_it_is_opened(clie
     assert response.json() == {"verification_required": True, "message": routers.REGISTRATION_ACCEPTED}
     assert "access_token" not in response.text                        # not signed in by registering
     (message,) = mail.messages
-    assert message["recipients"] == ["ada@uni.example"] and message["subject"] == "Confirm your Phylo Runner email address"
+    assert message["recipients"] == ["ada@uni.example"] and message["subject"] == "Confirm your Phylo Framework email address"
     token = link_token(message)
     assert f"https://phylo.lab.example/auth/verify-email?token={token}" in message["text"]
     user = await UserRepository(session).get_by_email("ada@uni.example")
@@ -439,7 +439,7 @@ async def test_registering_an_existing_address_looks_the_same_and_tells_only_the
     assert second.status_code == fresh.status_code == first.status_code == 202
     assert second.json() == fresh.json() == first.json()              # indistinguishable to the caller
     notice = mail.messages[1]
-    assert notice["recipients"] == ["ada@uni.example"] and notice["subject"] == "You already have a Phylo Runner account"
+    assert notice["recipients"] == ["ada@uni.example"] and notice["subject"] == "You already have a Phylo Framework account"
     assert "it already has one" in notice["text"] and "token=" not in notice["text"]
     user = await UserRepository(session).get_by_email("ada@uni.example")
     assert user.password_hash == before and user.username == "ada"    # the existing account is untouched
@@ -454,7 +454,7 @@ async def test_registering_an_existing_address_looks_the_same_and_tells_only_the
 async def test_registering_again_before_confirming_sends_a_fresh_link_and_keeps_the_first_password(client, session, mail):
     await register(client)
     await register(client, username="ada-again", password="a-different-password-2")
-    assert [m["subject"] for m in mail.messages] == ["Confirm your Phylo Runner email address"] * 2
+    assert [m["subject"] for m in mail.messages] == ["Confirm your Phylo Framework email address"] * 2
     first, second = (link_token(m) for m in mail.messages)
     assert first != second
     assert (await client.post("/auth/verify-email", json={"token": first})).status_code == 400    # replaced

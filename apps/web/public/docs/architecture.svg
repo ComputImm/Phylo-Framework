@@ -9,7 +9,7 @@
 <g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(28.8 451.36)">
 <title>architecture</title>
 <polygon fill="white" stroke="none" points="-28.8,28.8 -28.8,-451.36 901.8,-451.36 901.8,28.8 -28.8,28.8"/>
-<text text-anchor="middle" x="436.5" y="-404.16" font-family="Helvetica,sans-Serif" font-size="16.00">Phylo Runner — services &amp; trust boundary</text>
+<text text-anchor="middle" x="436.5" y="-404.16" font-family="Helvetica,sans-Serif" font-size="16.00">Phylo Framework — services &amp; trust boundary</text>
 <g id="clust1" class="cluster">
 <title>cluster_server</title>
 <path fill="white" stroke="#cbd5e1" stroke-dasharray="5,2" d="M20,-8C20,-8 853,-8 853,-8 859,-8 865,-14 865,-20 865,-20 865,-294.32 865,-294.32 865,-300.32 859,-306.32 853,-306.32 853,-306.32 20,-306.32 20,-306.32 14,-306.32 8,-300.32 8,-294.32 8,-294.32 8,-20 8,-20 8,-14 14,-8 20,-8"/>
