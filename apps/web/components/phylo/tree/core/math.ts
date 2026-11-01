@@ -1,6 +1,13 @@
 // Numeric helpers ported verbatim from LineageSVG. Do not change behaviour:
 // the Phase 4 colour work asserts these against snapshots taken before the port.
 
+const ZOOM_STEP = 0.05; // about 5% between steps: too little to see in a label's size
+
+/** Rounds a zoom level to a coarse geometric step, so nearby levels share a rendering. */
+export function quantizeZoom(k: number): number {
+  return Math.exp(Math.round(Math.log(k) / ZOOM_STEP) * ZOOM_STEP);
+}
+
 export function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
 }

@@ -95,7 +95,7 @@ function AuthPageContent() {
 
   if (pendingEmail) {
     return (
-      <main className="flex min-h-[calc(100vh-3.5rem)] items-center justify-center p-4">
+      <main className="flex min-h-page items-center justify-center p-4">
         <Card className="w-full max-w-md" data-testid="check-your-email">
           <CardHeader className="space-y-1">
             <CardTitle className="text-2xl">Check your email</CardTitle>
@@ -128,7 +128,7 @@ function AuthPageContent() {
   }
 
   return (
-    <main className="flex min-h-[calc(100vh-3.5rem)] items-center justify-center p-4">
+    <main className="flex min-h-page items-center justify-center p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
           <CardTitle className="text-2xl">
@@ -161,6 +161,9 @@ function AuthPageContent() {
                   id="username"
                   type="text"
                   placeholder="username"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   required
@@ -270,7 +273,7 @@ export default function AuthPage() {
   return (
     <Suspense
       fallback={
-        <main className="flex min-h-[calc(100vh-3.5rem)] items-center justify-center p-4">
+        <main className="flex min-h-page items-center justify-center p-4">
           <p className="text-muted-foreground">Loading...</p>
         </main>
       }

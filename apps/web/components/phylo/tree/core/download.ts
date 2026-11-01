@@ -156,12 +156,15 @@ export function serializeTreeSvg(
   return parts.join("");
 }
 
+// iOS Safari starts the download after click() returns, so revoking at once loses it.
+const REVOKE_DELAY_MS = 10_000;
+
 function triggerDownload(href: string, filename: string, revoke = false): void {
   const a = document.createElement("a");
   a.href = href;
   a.download = filename;
   a.click();
-  if (revoke) URL.revokeObjectURL(href);
+  if (revoke) window.setTimeout(() => URL.revokeObjectURL(href), REVOKE_DELAY_MS);
 }
 
 export function downloadSvg(svgMarkup: string, filename: string): void {
@@ -169,18 +172,34 @@ export function downloadSvg(svgMarkup: string, filename: string): void {
   triggerDownload(URL.createObjectURL(blob), filename, true);
 }
 
-export function downloadPng(svgMarkup: string, width: number, height: number, filename: string): void {
+export function downloadPng(
+  svgMarkup: string,
+  width: number,
+  height: number,
+  filename: string,
+  onError?: () => void,
+): void {
   const img = new Image();
+  img.onerror = () => onError?.();
   img.onload = () => {
     const canvas = document.createElement("canvas");
     canvas.width = width;
     canvas.height = height;
     const ctx = canvas.getContext("2d");
-    if (!ctx) return;
+    if (!ctx) {
+      onError?.();
+      return;
+    }
     ctx.fillStyle = "white";
     ctx.fillRect(0, 0, width, height);
     ctx.drawImage(img, 0, 0);
-    triggerDownload(canvas.toDataURL("image/png"), filename);
+    const dataUrl = canvas.toDataURL("image/png");
+    // Phones cap canvas size; past the cap the browser returns an empty image.
+    if (dataUrl === "data:,") {
+      onError?.();
+      return;
+    }
+    triggerDownload(dataUrl, filename);
   };
   img.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgMarkup)}`;
 }

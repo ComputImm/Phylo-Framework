@@ -78,7 +78,7 @@ export function Loading({
       aria-live="polite"
       className={cn(
         "flex flex-col items-center justify-center gap-3",
-        fullScreen ? "min-h-[calc(100vh-3.5rem)] w-full" : "py-12",
+        fullScreen ? "min-h-page w-full" : "py-12",
         className,
       )}
     >

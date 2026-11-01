@@ -11,25 +11,30 @@ import type { ColorScale } from "@/components/phylo/tree/core";
  */
 export default function TreeLegend({
   scale,
+  compact = false,
   activeColor,
   onToggle,
 }: {
   scale: ColorScale;
+  /** Starts closed, for panes where an open legend would cover the tree. */
+  compact?: boolean;
   activeColor: string | null;
   onToggle: (color: string) => void;
 }) {
-  const [open, setOpen] = useState(true);
+  // Null until the user chooses, so `compact` applies once the pane is measured.
+  const [userOpen, setUserOpen] = useState<boolean | null>(null);
+  const open = userOpen ?? !compact;
 
   if (scale.kind === "none" || !scale.field) return null;
 
   const title = scale.field;
 
   return (
-    <div className="absolute left-3 top-3 max-w-[220px] rounded-md border bg-background/90 text-xs shadow-sm backdrop-blur">
+    <div className="absolute left-3 top-3 max-w-[min(220px,calc(100%-5rem))] rounded-md border bg-background/90 text-xs shadow-sm backdrop-blur">
       <button
         type="button"
-        onClick={() => setOpen((o) => !o)}
-        className="flex w-full items-center gap-1 px-2 py-1.5 font-medium"
+        onClick={() => setUserOpen(!open)}
+        className="flex w-full items-center gap-1 px-2 py-1.5 font-medium pointer-coarse:min-h-11"
         aria-expanded={open}
       >
         {open ? <ChevronDown className="size-3.5" /> : <ChevronRight className="size-3.5" />}
@@ -37,7 +42,7 @@ export default function TreeLegend({
       </button>
 
       {open && (
-        <div className="max-h-[240px] overflow-auto px-2 pb-2">
+        <div className="max-h-[min(240px,40dvh)] overflow-auto px-2 pb-2">
           {scale.legend.kind === "continuous" && (
             <div className="space-y-1">
               <div

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import TreeOverlay from "./TreeOverlay";
+import Overlay from "@/components/common/Overlay";
 
 export type DownloadFormat = {
   label: string;
@@ -34,11 +34,11 @@ export default function DownloadMenu({
         className={className}
         onClick={() => setOpen(true)}
       >
-        <Download className="mr-1.5 size-4" />
-        Download
+        <Download className="size-4 @md:mr-1.5" />
+        <span className="sr-only @md:not-sr-only">Download</span>
       </Button>
 
-      <TreeOverlay
+      <Overlay
         open={open}
         onClose={() => setOpen(false)}
         title="Download"
@@ -66,7 +66,7 @@ export default function DownloadMenu({
             </button>
           ))}
         </div>
-      </TreeOverlay>
+      </Overlay>
     </>
   );
 }

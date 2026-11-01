@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useEffect, useState } from "react";
+import { memo, useCallback, useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Crosshair, X } from "lucide-react";
 import { Spinner } from "@/components/ui/loading";
@@ -11,9 +11,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { RunsApi } from "@/features/runs/api";
 import TreeView, { type CollapseSignal } from "@/components/phylo/tree/TreeView";
 import SequenceTraceInfoIcon from "@/components/sequence-trace/SequenceTraceInfoIcon";
+import SnapPager from "@/components/common/SnapPager";
+import { useBackdropDismiss } from "@/lib/hooks/useDismissOnOutside";
 
 export type CompareExpandTreeRef = {
   panelId: string;
+  /** Short name for this tree in the phone pager. */
+  label: string;
   runId: string;
   treeIndex: number;
 };
@@ -22,6 +26,8 @@ type CompareExpandDialogProps = {
   open: boolean;
   onOpenChange: (nextOpen: boolean) => void;
   trees: CompareExpandTreeRef[];
+  /** The tree to show first on a phone, where only one is visible at a time. */
+  initialPanelId?: string;
   /** Initial search text seeded from the page when the dialog opens. */
   highlightText: string;
   displayIdField: string;
@@ -113,7 +119,7 @@ const ExpandTreeTile = memo(function ExpandTreeTile({
   const methodTitle = (methodId && (methodNameById.get(methodId) ?? methodId)) || "—";
 
   return (
-    <Card className="flex w-[min(92vw,680px)] shrink-0 flex-col">
+    <Card className="flex w-full shrink-0 flex-col md:w-[min(92vw,680px)]">
       <CardHeader className="border-b pb-3">
         <CardTitle className="text-base">{methodTitle}</CardTitle>
         <p className="text-xs text-muted-foreground">
@@ -139,7 +145,7 @@ const ExpandTreeTile = memo(function ExpandTreeTile({
         )}
 
         {!payloadLoading && canRenderLineage && lineagePlot && (
-          <div className="h-[70vh]">
+          <div className="h-[calc(100dvh-19rem)] min-h-72 md:h-[70dvh]">
             <TreeView
               source={{ kind: "lineage", lineagePlot, nodeAttributes }}
               displayIdField={displayIdField || undefined}
@@ -170,12 +176,15 @@ export default function CompareExpandDialog({
   open,
   onOpenChange,
   trees,
+  initialPanelId,
   highlightText,
   displayIdField,
   methodNameById,
   collapseSignal,
   colorByField,
 }: CompareExpandDialogProps) {
+  const close = useCallback(() => onOpenChange(false), [onOpenChange]);
+  const backdropProps = useBackdropDismiss(close);
   const [query, setQuery] = useState(highlightText);
   const [mark, setMark] = useState(false);
   const [focus, setFocus] = useState(0);
@@ -211,21 +220,18 @@ export default function CompareExpandDialog({
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-black/60 p-3 sm:p-5"
+      className="fixed inset-0 z-50 overscroll-contain bg-black/60 sm:p-5"
       role="dialog"
       aria-modal="true"
-      onMouseDown={() => onOpenChange(false)}
+      {...backdropProps}
     >
-      <div
-        className="mx-auto flex h-full w-full max-w-[99vw] flex-col rounded-lg border bg-background shadow-xl"
-        onMouseDown={(event) => event.stopPropagation()}
-      >
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b px-4 py-3">
-          <div className="flex items-center gap-1.5">
-            <h3 className="text-base font-semibold">Expanded Sequence Trace gallery</h3>
+      <div className="mx-auto flex h-full w-full flex-col border bg-background shadow-xl max-sm:border-0 sm:max-w-[99vw] sm:rounded-lg">
+        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b px-3 py-2 sm:px-4 sm:py-3">
+          <div className="flex min-w-0 flex-1 items-center gap-1.5 md:flex-none">
+            <h3 className="truncate text-base font-semibold">Expanded Sequence Trace gallery</h3>
             <SequenceTraceInfoIcon />
           </div>
-          <div className="flex flex-1 flex-wrap items-center justify-end gap-2">
+          <div className="order-last flex w-full flex-wrap items-center justify-end gap-2 md:order-none md:w-auto md:flex-1">
             <Input
               placeholder="full sequence_id…"
               value={query}
@@ -234,7 +240,10 @@ export default function CompareExpandDialog({
                 setMark(false);
               }}
               onKeyDown={(e) => e.key === "Enter" && showMe()}
-              className="max-w-xs"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
+              className="w-auto min-w-0 flex-1 md:max-w-xs"
             />
             <Button type="button" onClick={showMe} disabled={!query.trim()} className="gap-1.5">
               <Crosshair className="h-4 w-4" />
@@ -252,23 +261,27 @@ export default function CompareExpandDialog({
                 Clear
               </Button>
             )}
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              onClick={() => onOpenChange(false)}
-              aria-label="Close expanded Sequence Trace"
-            >
-              <X className="h-4 w-4" />
-            </Button>
           </div>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            onClick={() => onOpenChange(false)}
+            aria-label="Close expanded Sequence Trace"
+          >
+            <X className="h-4 w-4" />
+          </Button>
         </div>
 
-        <div className="flex-1 overflow-auto p-4">
+        <div className="min-h-0 flex-1 overflow-auto overscroll-contain p-2 sm:p-4">
           {trees.length === 0 ? (
             <p className="text-sm text-muted-foreground">No trees are currently selected in this Sequence Trace panel.</p>
           ) : (
-            <div className="flex items-start gap-4 overflow-x-auto pb-2">
+            <SnapPager
+              labels={trees.map((treeRef) => treeRef.label)}
+              initialIndex={Math.max(0, trees.findIndex((treeRef) => treeRef.panelId === initialPanelId))}
+              className="md:flex md:items-start md:gap-4 md:overflow-x-auto md:pb-2"
+            >
               {trees.map((treeRef) => (
                 <ExpandTreeTile
                   key={treeRef.panelId}
@@ -283,7 +296,7 @@ export default function CompareExpandDialog({
                   methodNameById={methodNameById}
                 />
               ))}
-            </div>
+            </SnapPager>
           )}
         </div>
       </div>

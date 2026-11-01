@@ -14,7 +14,7 @@ export function Hero() {
 
       <div className="mx-auto grid max-w-6xl items-center gap-10 px-4 py-16 sm:px-6 sm:py-24 lg:grid-cols-2">
         <div className="space-y-6">
-          <span className="inline-flex items-center gap-2 rounded-full border bg-background/60 px-3 py-1 text-xs font-medium text-muted-foreground backdrop-blur">
+          <span className="inline-flex items-center gap-2 rounded-lg border bg-background/60 px-3 py-1 text-xs sm:rounded-full font-medium text-muted-foreground backdrop-blur">
             <Sparkles className="h-3.5 w-3.5 text-primary" />
             Standardized · Reproducible · Four methods, one workflow
           </span>

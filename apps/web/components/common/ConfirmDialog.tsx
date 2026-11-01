@@ -56,8 +56,8 @@ export default function ConfirmDialog({
       aria-labelledby="confirm-dialog-title"
       aria-describedby={description ? "confirm-dialog-description" : undefined}
     >
-      <div className="w-full max-w-md rounded-lg border bg-background shadow-xl">
-        <div className="space-y-2 px-4 py-4 sm:px-6">
+      <div className="flex max-h-full w-full max-w-md flex-col rounded-lg border bg-background shadow-xl">
+        <div className="min-h-0 space-y-2 overflow-y-auto px-4 py-4 sm:px-6">
           <h3 id="confirm-dialog-title" className="text-base font-semibold">
             {title}
           </h3>

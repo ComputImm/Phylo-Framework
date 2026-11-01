@@ -12,6 +12,9 @@ import {
   MAX_LABEL_AREA,
   TARGET_PLOT_WIDTH,
   MIN_CONTENT_WIDTH,
+  MIN_NARROW_PLOT_WIDTH,
+  NARROW_PANE_LABEL_RESERVE,
+  NARROW_PANE_WIDTH,
   MIN_CONTENT_HEIGHT,
   COLLAPSED_GLYPH_MIN_H,
   COLLAPSED_GLYPH_MAX_H,
@@ -26,9 +29,15 @@ export type LayoutOptions = {
   showInternalNodes: boolean;
   /** Resolve the display label for a node (respects current display options). */
   displayLabelOf: (node: TreeNodeModel) => string;
-  /** Width the single affine x-map fills. Phase 2 feeds a measured width. */
+  /** Width the single affine x-map fills. See narrowPanePlotWidth. */
   targetWidth?: number;
 };
+
+/** The plot width for a narrow pane, or undefined when the default width should apply. */
+export function narrowPanePlotWidth(paneWidth: number): number | undefined {
+  if (paneWidth <= 0 || paneWidth >= NARROW_PANE_WIDTH) return undefined;
+  return Math.max(MIN_NARROW_PLOT_WIDTH, paneWidth - NARROW_PANE_LABEL_RESERVE);
+}
 
 const EMPTY_COLLAPSE: ReadonlySet<string> = new Set();
 
@@ -235,7 +244,8 @@ export function layoutTree(model: TreeModel, opts: LayoutOptions): TreeLayout {
   const labelX = labelsOn ? plotRightX + LABEL_PAD : 0;
   const connectorX = labelsOn ? Math.round(labelX) - LABEL_CONNECTOR_GAP : 0;
   const labelAreaWidth = labelsOn ? LABEL_PAD + labelWidth : 0;
-  const width = Math.ceil(Math.max(MIN_CONTENT_WIDTH, plotRightX + labelAreaWidth + PAD));
+  const minWidth = opts.targetWidth === undefined ? MIN_CONTENT_WIDTH : 0;
+  const width = Math.ceil(Math.max(minWidth, plotRightX + labelAreaWidth + PAD));
   const height = Math.ceil(Math.max(MIN_CONTENT_HEIGHT, maxY + PAD));
 
   return {

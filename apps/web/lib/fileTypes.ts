@@ -100,6 +100,12 @@ export function isFileCompatible(
   return fileFormat !== "unknown" && formats.has(fileFormat);
 }
 
+/** True when a file just picked from the device can be used. No `accepts` means anything goes. */
+export function isPickedFileAcceptable(file: File, accepts: string[] | undefined): boolean {
+  if (!accepts?.length) return true;
+  return isFileCompatible({ original_filename: file.name, mime_type: file.type }, accepts);
+}
+
 /** Builds a native `<input accept>` string (MIME types + extensions) for UX. */
 export function acceptAttr(accepts: string[] | undefined): string {
   const tokens = new Set<string>(accepts ?? []);

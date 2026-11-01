@@ -3,15 +3,16 @@
 import { useEffect, type ReactNode } from "react";
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useBackdropDismiss } from "@/lib/hooks/useDismissOnOutside";
 import { cn } from "@/lib/utils";
 
 /**
- * Lightweight overlay used by the tree-display controls (settings sidebar,
- * download modal, node-detail modal). Hand-built to match the existing
- * CompareExpandDialog pattern — fixed overlay, ESC + click-outside close,
- * body-scroll lock — so we don't pull in a new Radix dialog dependency.
+ * Lightweight modal and drawer (tree settings, downloads, node details, the phone
+ * menu). Hand-built to match the existing CompareExpandDialog pattern — fixed
+ * overlay, ESC + click-outside close, body-scroll lock — so we don't pull in a new
+ * Radix dialog dependency.
  */
-export default function TreeOverlay({
+export default function Overlay({
   open,
   onClose,
   title,
@@ -36,6 +37,7 @@ export default function TreeOverlay({
   children: ReactNode;
 }) {
   const contained = mode === "contained";
+  const backdropProps = useBackdropDismiss(onClose);
 
   useEffect(() => {
     if (!open) return;
@@ -55,36 +57,36 @@ export default function TreeOverlay({
   if (!open) return null;
 
   const isDrawer = side === "left" || side === "right";
+  const isFull = !isDrawer && size === "full";
 
   return (
     <div
       className={cn(
-        "z-50 flex bg-black/60",
+        "z-50 flex overscroll-contain bg-black/60",
         contained ? "absolute inset-0" : "fixed inset-0",
-        !isDrawer && (contained ? "p-3" : "p-3 sm:p-5"),
+        !isDrawer && (contained ? "p-3" : isFull ? "sm:p-5" : "p-3 sm:p-5"),
         side === "left" && "justify-start",
         side === "right" && "justify-end",
         side === "center" && "items-center justify-center",
       )}
       role="dialog"
       aria-modal="true"
-      onMouseDown={onClose}
+      {...backdropProps}
     >
       <div
         className={cn(
           "flex max-h-full flex-col rounded-lg border bg-background shadow-xl",
           isDrawer
             ? cn("h-full", contained ? "w-72 max-w-[85%]" : "w-full max-w-sm")
-            : size === "full"
-              ? "h-full w-full max-w-[98vw]"
+            : isFull
+              ? "h-full w-full max-sm:rounded-none max-sm:border-0 sm:max-w-[98vw]"
               : "w-full max-w-lg",
           className,
         )}
-        onMouseDown={(event) => event.stopPropagation()}
       >
         <div className="flex items-start justify-between gap-2 border-b px-4 py-3">
           <div className="min-w-0 space-y-0.5">
-            <h3 className="text-base font-semibold">{title}</h3>
+            <h3 className="truncate text-base font-semibold">{title}</h3>
             {description ? (
               <p className="text-xs text-muted-foreground">{description}</p>
             ) : null}
@@ -100,7 +102,9 @@ export default function TreeOverlay({
             <X className="size-4" />
           </Button>
         </div>
-        <div className="flex-1 overflow-auto p-4">{children}</div>
+        <div className={cn("min-h-0 flex-1 overflow-auto overscroll-contain", isFull ? "p-2 sm:p-4" : "p-4")}>
+          {children}
+        </div>
       </div>
     </div>
   );

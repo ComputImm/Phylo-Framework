@@ -10,6 +10,8 @@ import { clamp } from "@/components/phylo/tree/core";
 const MIN_SCALE = 0.05;
 const MAX_SCALE = 8;
 const FIT_PAD = 0.94; // leave a small margin so nothing touches the edges
+const READABLE_FIT_K = 0.8; // below this a whole-tree fit makes labels too small to read
+const READABLE_FIT_TOP = 12; // gap above the tree in a width-only fit (px)
 
 export type Bounds = { x: number; y: number; width: number; height: number };
 
@@ -24,6 +26,13 @@ type UseZoomPanArgs = {
   containerHeight: number;
   /** Bump to re-fit (model / layout identity change). */
   fitKey: unknown;
+  /** False lets touches through to the page (mouse and wheel still zoom). */
+  touchGestures?: boolean;
+  /**
+   * Start from a fit to the pane's width, top-aligned, when fitting the whole tree
+   * would be unreadable. For tall trees in phone-shaped panes.
+   */
+  readableInitialFit?: boolean;
 };
 
 export type ZoomApi = {
@@ -50,6 +59,8 @@ export function useZoomPan({
   containerWidth,
   containerHeight,
   fitKey,
+  touchGestures = true,
+  readableInitialFit = false,
 }: UseZoomPanArgs): ZoomApi {
   const [transform, setTransform] = useState<ZoomTransform>(zoomIdentity);
   const transformRef = useRef<ZoomTransform>(zoomIdentity);
@@ -62,6 +73,13 @@ export function useZoomPan({
     const sel = select(svgEl);
     const zb = zoom<SVGSVGElement, unknown>()
       .scaleExtent([MIN_SCALE, MAX_SCALE])
+      // d3-zoom's default filter, plus the touch opt-out.
+      .filter(
+        (event) =>
+          (touchGestures || !event.type.startsWith("touch")) &&
+          (!event.ctrlKey || event.type === "wheel") &&
+          !event.button,
+      )
       .on("zoom", (event) => {
         transformRef.current = event.transform;
         if (rafRef.current == null) {
@@ -80,7 +98,7 @@ export function useZoomPan({
       rafRef.current = null;
       zbRef.current = null;
     };
-  }, [svgEl]);
+  }, [svgEl, touchGestures]);
 
   const applyTransform = useCallback(
     (t: ZoomTransform, animate: boolean) => {
@@ -144,8 +162,24 @@ export function useZoomPan({
     if (containerWidth <= 0 || containerHeight <= 0) return;
     if (fittedKeyRef.current === fitKey) return;
     fittedKeyRef.current = fitKey;
+    const wholeTreeK = Math.min(containerWidth / contentWidth, containerHeight / contentHeight) * FIT_PAD;
+    if (readableInitialFit && wholeTreeK < READABLE_FIT_K) {
+      const k = clamp((containerWidth / contentWidth) * FIT_PAD, MIN_SCALE, MAX_SCALE);
+      const tx = (containerWidth - k * contentWidth) / 2;
+      applyTransform(zoomIdentity.translate(tx, READABLE_FIT_TOP).scale(k), false);
+      return;
+    }
     fitToView(undefined, false);
-  }, [fitKey, containerWidth, containerHeight, fitToView]);
+  }, [
+    fitKey,
+    containerWidth,
+    containerHeight,
+    contentWidth,
+    contentHeight,
+    readableInitialFit,
+    applyTransform,
+    fitToView,
+  ]);
 
   return { transform, zoomIn, zoomOut, resetZoom, fitToView, focusOn, zoomTo };
 }

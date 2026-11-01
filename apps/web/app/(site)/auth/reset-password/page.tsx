@@ -53,7 +53,7 @@ function ResetPasswordPageContent() {
 
   if (!token) {
     return (
-      <main className="flex min-h-[calc(100vh-3.5rem)] items-center justify-center p-4">
+      <main className="flex min-h-page items-center justify-center p-4">
         <Card className="w-full max-w-md">
           <CardContent className="pt-6">
             <p className="text-sm text-muted-foreground text-center">
@@ -72,7 +72,7 @@ function ResetPasswordPageContent() {
 
   if (done) {
     return (
-      <main className="flex min-h-[calc(100vh-3.5rem)] items-center justify-center p-4">
+      <main className="flex min-h-page items-center justify-center p-4">
         <Card className="w-full max-w-md">
           <CardContent className="pt-6">
             <p className="text-sm text-center text-muted-foreground">
@@ -90,7 +90,7 @@ function ResetPasswordPageContent() {
   }
 
   return (
-    <main className="flex min-h-[calc(100vh-3.5rem)] items-center justify-center p-4">
+    <main className="flex min-h-page items-center justify-center p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
           <CardTitle className="text-2xl">Set new password</CardTitle>
@@ -143,7 +143,7 @@ export default function ResetPasswordPage() {
   return (
     <Suspense
       fallback={
-        <main className="flex min-h-[calc(100vh-3.5rem)] items-center justify-center p-4">
+        <main className="flex min-h-page items-center justify-center p-4">
           <p className="text-muted-foreground">Loading...</p>
         </main>
       }

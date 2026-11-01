@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
+import { memo, useRef, useState, type KeyboardEvent, type MouseEvent, type PointerEvent } from "react";
 import MatchArrow from "@/components/phylo/tree/MatchArrow";
 import { splitByHighlight, LABEL_FONT_SIZE, LOD_LABELS_K } from "@/components/phylo/tree/core";
 import type { TreeRenderProps } from "./TreeRenderer";
@@ -17,13 +17,14 @@ const LONG_PRESS_MOVE = 8; // px of movement that cancels a long-press
  * collapsed-subtree `GlyphVisual` wedges, and elbow edges as SVG inside the
  * parent's transformed `<g>`. No `<title>` tooltips — hover shows affordance;
  * details come from the modal on click. Semantic zoom (LOD) is driven by
- * `transform.k`; text/chevrons stay screen-constant via `1/k` counter-scaling.
+ * `zoomK`; text/chevrons stay screen-constant via `1/k` counter-scaling. Memoised,
+ * since the pane re-renders on every pan frame and a pan changes nothing in here.
  */
-export default function SvgTreeRenderer({
+function SvgTreeRenderer({
   nodes,
   edges,
   glyphs,
-  transform,
+  zoomK,
   lod,
   labelX,
   connectorX,
@@ -33,7 +34,7 @@ export default function SvgTreeRenderer({
   onToggleCollapse,
 }: TreeRenderProps) {
   const [hoveredId, setHoveredId] = useState<string | null>(null);
-  const k = transform.k || 1;
+  const k = zoomK || 1;
   const dots = lod === "dots";
   const showText = !dots; // labels, connectors, glyph labels (hybrid-scaled)
   const showArrows = !dots;
@@ -46,6 +47,9 @@ export default function SvgTreeRenderer({
 
   // Long-press (touch) → toggle collapse, without stealing pan from d3-zoom.
   const pressRef = useRef<{ id: string; x: number; y: number; timer: number } | null>(null);
+  // Set once a press has toggled, so the click or contextmenu that follows it (both
+  // fire on Android) does not act on the same press.
+  const pressHandledRef = useRef(false);
   const cancelPress = () => {
     if (pressRef.current) {
       window.clearTimeout(pressRef.current.timer);
@@ -53,11 +57,13 @@ export default function SvgTreeRenderer({
     }
   };
   const onPointerDown = (id: string) => (e: PointerEvent) => {
+    pressHandledRef.current = false;
     if (e.pointerType !== "touch") return;
     cancelPress();
     const timer = window.setTimeout(() => {
       onToggleCollapse(id);
       pressRef.current = null;
+      pressHandledRef.current = true;
     }, LONG_PRESS_MS);
     pressRef.current = { id, x: e.clientX, y: e.clientY, timer };
   };
@@ -67,6 +73,21 @@ export default function SvgTreeRenderer({
     if (Math.abs(e.clientX - p.x) > LONG_PRESS_MOVE || Math.abs(e.clientY - p.y) > LONG_PRESS_MOVE) {
       cancelPress();
     }
+  };
+
+  const onNodeContextMenu = (id: string) => (e: MouseEvent) => {
+    e.preventDefault();
+    if (pressHandledRef.current) return;
+    pressHandledRef.current = pressRef.current !== null;
+    cancelPress();
+    onToggleCollapse(id);
+  };
+  const onNodeTap = (id: string) => () => {
+    if (pressHandledRef.current) {
+      pressHandledRef.current = false;
+      return;
+    }
+    onNodeClick(id);
   };
 
   const nodeKeyDown = (id: string, collapsible: boolean) => (e: KeyboardEvent) => {
@@ -163,15 +184,13 @@ export default function SvgTreeRenderer({
               }}
               onMouseEnter={() => setHoveredId(n.id)}
               onMouseLeave={() => setHoveredId(null)}
-              onClick={() => onNodeClick(n.id)}
-              onContextMenu={(e) => {
-                e.preventDefault();
-                onToggleCollapse(n.id);
-              }}
+              onClick={onNodeTap(n.id)}
+              onContextMenu={onNodeContextMenu(n.id)}
               onKeyDown={nodeKeyDown(n.id, n.isCollapsible)}
               onPointerDown={onPointerDown(n.id)}
               onPointerMove={onPointerMove}
               onPointerUp={cancelPress}
+              onPointerCancel={cancelPress}
               onPointerLeave={cancelPress}
             >
               <circle
@@ -202,6 +221,8 @@ export default function SvgTreeRenderer({
               {/* collapse chevron on expanded collapsible nodes (screen-constant) */}
               {showChevrons && n.isCollapsible && (
                 <g
+                  // Too small to aim at on touch, where the node's dialog offers collapse.
+                  className="pointer-coarse:hidden"
                   transform={`translate(${n.cx} ${n.cy}) scale(${1 / k})`}
                   onClick={(e) => {
                     e.stopPropagation();
@@ -228,7 +249,12 @@ export default function SvgTreeRenderer({
           {nodes
             .filter((n) => n.labelShown && n.labelText)
             .map((n) => (
-              <g key={`label-${n.id}`} opacity={n.faded ? FADE_OPACITY : 1}>
+              <g
+                key={`label-${n.id}`}
+                opacity={n.faded ? FADE_OPACITY : 1}
+                style={{ cursor: "pointer" }}
+                onClick={() => onNodeClick(n.id)}
+              >
                 <line
                   x1={n.cx}
                   y1={n.cy}
@@ -264,3 +290,4 @@ export default function SvgTreeRenderer({
     </>
   );
 }
+export default memo(SvgTreeRenderer);

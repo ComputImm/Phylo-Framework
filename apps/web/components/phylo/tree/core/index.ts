@@ -2,7 +2,7 @@
 // framework-light and unit-testable.
 export * from "./types";
 export * from "./constants";
-export { clamp, isFiniteNumber, toAbundance, logNorm, linNorm } from "./math";
+export { clamp, quantizeZoom, isFiniteNumber, toAbundance, logNorm, linNorm } from "./math";
 export { truncateLabel, estimateTextWidth, splitByHighlight } from "./text";
 export { nodeRadius, type RadiusScaleType } from "./nodeRadius";
 export {
@@ -14,7 +14,8 @@ export {
 } from "./colorScale";
 export { fromLineagePlot } from "./fromLineagePlot";
 export { fromNewick, sanitizeNewick, type FromNewickOptions } from "./fromNewick";
-export { layoutTree, type LayoutOptions } from "./layout";
+export { layoutTree, narrowPanePlotWidth, type LayoutOptions } from "./layout";
+export { buildTreeVisuals, nearestNodeId, type TreeVisualOptions, type TreeVisuals } from "./visuals";
 export {
   defaultCollapsed,
   collapseAll,

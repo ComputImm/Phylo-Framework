@@ -88,9 +88,9 @@ export default function RunProgress({
     <Card className="space-y-3 p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="min-w-0 text-sm">
-          Run ID: <span className="truncate font-mono">{runId}</span>
+          Run ID: <span className="break-all font-mono">{runId}</span>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <span className={`shrink-0 rounded border px-2 py-0.5 text-xs ${badge}`}>{label}</span>
           {durationLabel && !isStatusError && (
             <span className="shrink-0 rounded border bg-muted px-2 py-0.5 text-xs text-muted-foreground">

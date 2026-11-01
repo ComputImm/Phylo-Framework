@@ -46,6 +46,7 @@
 :root {
   --font-roboto-condensed: "Roboto Condensed";
   --radius: 0.85rem;
+  --navbar-height: 3.5rem;
   --background: oklch(0.99 0.006 300);
   --foreground: oklch(0.17 0.02 295);
   --card: oklch(1 0.004 300);
@@ -133,6 +134,12 @@
   summary {
     cursor: pointer;
   }
+}
+
+/* A page that fills the viewport below the navbar. `dvh` follows mobile browser
+   bars as they show and hide, which `vh` does not. */
+@utility min-h-page {
+  min-height: calc(100dvh - var(--navbar-height));
 }
 
 /* Run-progress animations: marching-ants ring on the active stage and a
