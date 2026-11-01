@@ -12,7 +12,7 @@ from datetime import datetime
 from html import escape
 from typing import Optional
 
-APP_NAME = "Phylo Runner"
+APP_NAME = "Phylo Framework"
 
 OUTCOME_DONE = "DONE"
 OUTCOME_ERROR = "ERROR"

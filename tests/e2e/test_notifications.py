@@ -91,7 +91,7 @@ async def test_a_finished_run_sends_its_owner_exactly_one_email(api):
     assert (await user.wait(run_id))['status'] == 'DONE'
     (message,) = await wait_for_mail(user.email)
     assert message['subject'] == 'Your ClonalTree (B-DIVE) run has finished'
-    assert message['from'] == 'Phylo Runner <phylo@tests.example>'
+    assert message['from'] == 'Phylo Framework <phylo@tests.example>'
     assert f'http://127.0.0.1:53000/dashboard?runId={run_id}' in message['text']
     assert SAMPLE.name in message['text'] and run_id in message['html']
     await asyncio.sleep(4)                                   # several delivery cycles later: still one

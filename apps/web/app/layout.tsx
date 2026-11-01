@@ -3,7 +3,7 @@ import Providers from "./providers";
 import { Roboto_Condensed } from "next/font/google";
 
 export const metadata = {
-  title: "Phylo Runner",
+  title: "Phylo Framework",
   description: "Phylogeny methods runner",
 };
 

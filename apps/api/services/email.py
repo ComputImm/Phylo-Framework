@@ -13,7 +13,7 @@ values the deployment provides are the only source of truth:
     SMTP_SECURITY          starttls (default) | ssl | none
     SMTP_USERNAME          optional; with SMTP_PASSWORD enables authentication
     SMTP_PASSWORD          optional
-    SMTP_FROM              sender, e.g. "Phylo Runner <phylo@example.org>"
+    SMTP_FROM              sender, e.g. "Phylo Framework <phylo@example.org>"
     SMTP_TIMEOUT_SECONDS   connection and command timeout (default 15)
     SMTP_TLS_VERIFY        verify the server certificate (default true)
     SMTP_TLS_CA_FILE       optional CA bundle for a server with a private CA

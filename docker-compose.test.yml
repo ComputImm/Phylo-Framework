@@ -55,7 +55,7 @@ services:
       SMTP_HOST: mail
       SMTP_PORT: "1025"
       SMTP_SECURITY: none
-      SMTP_FROM: "Phylo Runner <phylo@tests.example>"
+      SMTP_FROM: "Phylo Framework <phylo@tests.example>"
       SMTP_TIMEOUT_SECONDS: "3"
       FRONTEND_URL: http://127.0.0.1:53000
       NOTIFICATION_POLL_SECONDS: "0.5"

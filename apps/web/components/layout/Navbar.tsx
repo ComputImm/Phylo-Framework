@@ -25,7 +25,7 @@ export default function Navbar() {
             href="/"
             className="text-base font-semibold text-foreground hover:text-primary transition-colors sm:text-lg truncate shrink-0"
           >
-            Phylo Runner
+            Phylo Framework
           </Link>
           <nav className="hidden sm:flex items-center gap-2 sm:gap-4 shrink-0">
             <Link

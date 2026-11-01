@@ -7,7 +7,7 @@ digraph architecture {
   fontname="Helvetica";
   labelloc="t";
   fontsize=16;
-  label="Phylo Runner — services & trust boundary";
+  label="Phylo Framework — services & trust boundary";
 
   node [fontname="Helvetica", fontsize=11, shape=box, style="rounded,filled",
         fillcolor="#f8fafc", color="#94a3b8", margin="0.20,0.11"];

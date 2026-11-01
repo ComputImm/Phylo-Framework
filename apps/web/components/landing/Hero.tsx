@@ -23,7 +23,7 @@ export function Hero() {
             <span className="text-primary">B-cell lineage reconstruction</span>
           </h1>
           <p className="max-w-xl text-lg leading-relaxed text-muted-foreground">
-            Phylo Runner is a unified, reproducible framework for standardized B-cell lineage
+            Phylo Framework is a unified, reproducible framework for standardized B-cell lineage
             reconstruction across multiple phylogenetic methods. Run Dowser, GCtree, BrepPhylo and
             ClonalTree over one dataset through one workflow — every run recorded with its parameters
             and its random seed, so any result can be regenerated exactly.

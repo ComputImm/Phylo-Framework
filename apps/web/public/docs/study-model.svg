@@ -9,7 +9,7 @@
 <g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(28.8 284.72)">
 <title>studymodel</title>
 <polygon fill="white" stroke="none" points="-28.8,28.8 -28.8,-284.72 1208.68,-284.72 1208.68,28.8 -28.8,28.8"/>
-<text text-anchor="middle" x="589.94" y="-237.52" font-family="Helvetica,sans-Serif" font-size="16.00">How your study data flows through Phylo Runner</text>
+<text text-anchor="middle" x="589.94" y="-237.52" font-family="Helvetica,sans-Serif" font-size="16.00">How your study data flows through Phylo Framework</text>
 <!-- dataset -->
 <g id="node1" class="node">
 <title>dataset</title>

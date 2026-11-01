@@ -459,7 +459,7 @@ function LiveDashboard({ onViewResults }: { onViewResults: (runId: string) => vo
   const header = (
     <header className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
       <div className="min-w-0">
-        <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl truncate">Phylo Runner</h1>
+        <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl truncate">Phylo Framework</h1>
         <p className="text-muted-foreground text-sm mt-1">
           Select a method, set parameters, upload your data, and generate trees.
         </p>

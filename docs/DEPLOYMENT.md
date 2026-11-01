@@ -780,7 +780,7 @@ built in.
 | `SMTP_PORT` | by security | 587 (`starttls`), 465 (`ssl`), 25 (`none`) |
 | `SMTP_SECURITY` | `starttls` | `starttls`, `ssl` or `none` |
 | `SMTP_USERNAME`, `SMTP_PASSWORD` | empty | Optional login; set both or neither |
-| `SMTP_FROM` | none | Sender, e.g. `Phylo Runner <phylo@example.org>`. Required with `SMTP_HOST` |
+| `SMTP_FROM` | none | Sender, e.g. `Phylo Framework <phylo@example.org>`. Required with `SMTP_HOST` |
 | `SMTP_TIMEOUT_SECONDS` | `15` | Wait at each step of a delivery |
 | `SMTP_TLS_VERIFY` | `true` | Verify the server's certificate |
 | `SMTP_TLS_CA_FILE` | empty | CA bundle for a server with a private CA |

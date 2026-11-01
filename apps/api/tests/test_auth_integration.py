@@ -256,7 +256,7 @@ async def test_migration_neutralizes_only_empty_password_hashes(session):
 # --------------------------------------------------------------------------- #
 def _use_mail_server(monkeypatch, sink, **extra):
     env = {'SMTP_HOST': '127.0.0.1', 'SMTP_PORT': str(sink.port), 'SMTP_SECURITY': 'none',
-           'SMTP_FROM': 'Phylo Runner <phylo@lab.example>', 'SMTP_TIMEOUT_SECONDS': '2', **extra}
+           'SMTP_FROM': 'Phylo Framework <phylo@lab.example>', 'SMTP_TIMEOUT_SECONDS': '2', **extra}
     for name in ('SMTP_USERNAME', 'SMTP_PASSWORD', 'SMTP_TLS_VERIFY', 'SMTP_TLS_CA_FILE'):
         monkeypatch.delenv(name, raising=False)
     for name, value in env.items():
@@ -273,7 +273,7 @@ async def test_password_reset_email_is_delivered_over_smtp_with_a_working_link(c
         assert response.status_code == 200
         (mail,) = sink.messages
     user = await UserRepository(session).get_by_email('owner@example.org')
-    assert mail['recipients'] == ['owner@example.org'] and mail['subject'] == 'Reset your Phylo Runner password'
+    assert mail['recipients'] == ['owner@example.org'] and mail['subject'] == 'Reset your Phylo Framework password'
     # The token in the email is the one that resets the password; the database
     # holds only its hash.
     token = mail['text'].split('token=')[1].split()[0]

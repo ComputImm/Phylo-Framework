@@ -30,7 +30,7 @@ def clean_smtp_env(monkeypatch):
 
 def configure(monkeypatch, sink: SmtpSink, **overrides):
     values = {"SMTP_HOST": "127.0.0.1", "SMTP_PORT": str(sink.port), "SMTP_SECURITY": "none",
-              "SMTP_FROM": "Phylo Runner <phylo@lab.example>", "SMTP_TIMEOUT_SECONDS": "5"}
+              "SMTP_FROM": "Phylo Framework <phylo@lab.example>", "SMTP_TIMEOUT_SECONDS": "5"}
     values.update({k: str(v) for k, v in overrides.items()})
     for name, value in values.items():
         monkeypatch.setenv(name, value)
@@ -91,7 +91,7 @@ def test_every_setting_comes_from_the_environment():
     ({"SMTP_PORT": "smtp"}, "SMTP_PORT must be a port number"),
     ({"SMTP_PORT": "70000"}, "SMTP_PORT must be a port number"),
     ({"SMTP_FROM": ""}, "SMTP_FROM is required"),
-    ({"SMTP_FROM": "Phylo Runner"}, "SMTP_FROM must contain an email address"),
+    ({"SMTP_FROM": "Phylo Framework"}, "SMTP_FROM must contain an email address"),
     ({"SMTP_USERNAME": "phylo"}, "must be set together"),
     ({"SMTP_PASSWORD": SECRET}, "must be set together"),
     ({"SMTP_USERNAME": "phylo", "SMTP_PASSWORD": SECRET, "SMTP_SECURITY": "none"}, "credentials are not sent without TLS"),
@@ -135,7 +135,7 @@ def test_start_up_line_reports_off_invalid_and_working(monkeypatch, caplog):
 # --------------------------------------------------------------------------- #
 def settings_for(port=25, **over):
     env = {"SMTP_HOST": "127.0.0.1", "SMTP_PORT": str(port), "SMTP_SECURITY": "none",
-           "SMTP_FROM": "Phylo Runner <phylo@lab.example>"}
+           "SMTP_FROM": "Phylo Framework <phylo@lab.example>"}
     env.update(over)
     return mailer.smtp_settings(env)
 
@@ -143,7 +143,7 @@ def settings_for(port=25, **over):
 def test_message_has_text_and_html_parts_and_is_marked_automatic():
     message = mailer.build_message(settings_for(), to="Ada <ada@uni.example>", subject="Run finished",
                                    text="plain body", html="<p>html body</p>")
-    assert message["From"] == "Phylo Runner <phylo@lab.example>" and message["To"] == "Ada <ada@uni.example>"
+    assert message["From"] == "Phylo Framework <phylo@lab.example>" and message["To"] == "Ada <ada@uni.example>"
     assert message["Subject"] == "Run finished" and message["Auto-Submitted"] == "auto-generated"
     assert message["Date"] and message["Message-ID"].endswith("@lab.example>")
     assert message.get_body(("plain",)).get_content().strip() == "plain body"
@@ -177,7 +177,7 @@ async def test_plain_smtp_delivers_the_message_intact(monkeypatch):
     (received,) = sink.messages
     assert received["recipients"] == ["ada@uni.example"] and received["envelope_from"].startswith("FROM:<phylo@lab.example>")
     assert received["subject"] == "Your GCtree run has finished"
-    assert received["from"] == "Phylo Runner <phylo@lab.example>"
+    assert received["from"] == "Phylo Framework <phylo@lab.example>"
     assert received["text"].replace("\r\n", "\n") == "Results are ready.\n.A line starting with a dot\nÜmläut ✓\n"
     assert "<b>ready</b>" in received["html"]
     assert received["tls"] is False and received["authenticated"] is False
@@ -333,9 +333,9 @@ def test_user_and_method_supplied_text_is_escaped_in_html():
 def test_account_emails():
     link = "https://phylo.lab.example/auth/reset-password?token=abc"
     reset = templates.password_reset(reset_link=link, expires_hours=1)
-    assert reset.subject == "Reset your Phylo Runner password"
+    assert reset.subject == "Reset your Phylo Framework password"
     assert f"Reset your password: {link}" in reset.text and "works for 1 hour." in reset.text
     assert "you can ignore this email" in reset.text and f'href="{link}"' in reset.html
     verify = templates.email_verification(verification_link="https://phylo.lab.example/auth/verify?token=abc", expires_hours=24)
-    assert verify.subject == "Confirm your Phylo Runner email address"
+    assert verify.subject == "Confirm your Phylo Framework email address"
     assert "works for 24 hours" in verify.text and "Confirm your email address: https://" in verify.text

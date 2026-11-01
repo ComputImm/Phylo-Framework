@@ -25,10 +25,10 @@ export function WhyUseIt() {
     <section className="border-b bg-muted/30">
       <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
         <div className="mx-auto max-w-2xl space-y-3 text-center">
-          <h2 className="text-3xl font-bold tracking-tight">Why use Phylo Runner?</h2>
+          <h2 className="text-3xl font-bold tracking-tight">Why use Phylo Framework?</h2>
           <p className="text-lg text-muted-foreground">
             The methods are powerful but hard to work with, and each expects its own inputs. Phylo
-            Runner standardizes the way in, so the differences you see between methods come from the
+            Framework standardizes the way in, so the differences you see between methods come from the
             biology — not from your file format.
           </p>
         </div>
