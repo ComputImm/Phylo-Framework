@@ -34,7 +34,7 @@ FASTA = b">root\nACGT\n>leaf\nACGA\n"
 @pytest.mark.parametrize("value,expected", [("7", 7), ("0", 0), ("-1", 5), ("many", 5), ("", 5)])
 def test_a_wrong_pool_setting_falls_back_to_the_default(monkeypatch, value, expected):
     monkeypatch.setenv("DB_POOL_SIZE", value)
-    assert config._pool_setting("DB_POOL_SIZE", 5) == expected
+    assert config._number("DB_POOL_SIZE", 5) == expected
 
 
 def test_a_pool_size_of_zero_turns_pooling_off(monkeypatch):

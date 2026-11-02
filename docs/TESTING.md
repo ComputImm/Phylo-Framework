@@ -74,7 +74,9 @@ use disposable tmpfs; worker staging uses a project-scoped test volume. The API
 and integration harness use separate databases (`phylo_e2e_test` and
 `phylo_test`) so truncation cannot race the live worker. Root `conftest.py` sets
 isolated credentials, filesystem paths and disabled external email/OAuth keys
-before application imports. The E2E containers do not mount `.env`.
+before application imports. It also sets `DB_POOL_SIZE=0`: each test runs in its
+own event loop, and a pooled connection cannot move between loops. The pool
+itself is tested with engines of its own. The E2E containers do not mount `.env`.
 
 Do not run two copies of the suite concurrently on the same machine: the reserved
 test ports/project and integration database are shared. A CI job owns its runner.
@@ -126,7 +128,7 @@ percentages use different instrumentation denominators; compare like with like.
 | Authentication | Real register/login/me/refresh, duplicate identities, inactive accounts, malformed/expired/wrong-type tokens, reset single-use and non-enumeration; simulated Google HTTP failures |
 | Uploads/datasets | Raw content round-trip, SHA-256, actual-byte quota, empty upload, duplicate completion, cancellation/cleanup, ownership, soft deletion, active-run protection and rerun of a deleted dataset |
 | Run/artifact access | Owner, other user and anonymous requests, listing/streaming/preview, nullable artifact roles, private run cancellation |
-| Database/queue | Migration chain, per-user quota/fairness, partial unique index, simultaneous workers on independent connections, lease expiry/reclaim and stale-owner lease renewal |
+| Database/queue | Migration chain, per-user quota/fairness, partial unique index, simultaneous workers on independent connections, lease expiry/reclaim and stale-owner lease renewal; connection pool reuse and recovery, no connection held during uploads, downloads or emails, no write for an unchanged stage |
 | Worker | Submit/poll/persist, transient polling failure, method failure/cancel, cancellation before submission, resume without resubmission, malformed manifest and next-user-turn promotion |
 | Storage | Shared behavioral suite for local disk, boto3 S3 against MinIO, and MinIO SDK; streaming, rename, missing keys, signed downloads, path escape and binary stream upload |
 | Python methods | Existing scientific helper tests; lifecycle tests parameterized over both implementations; real artifact upload/checksum and manifest failure paths |
