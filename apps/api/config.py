@@ -83,3 +83,20 @@ def get_database_url() -> str:
 
 
 DATABASE_URL = get_database_url()
+
+
+def _pool_setting(name: str, default: int) -> int:
+    """A non-negative whole number from the environment; anything else is the default."""
+    try:
+        value = int(os.getenv(name, ""))
+    except ValueError:
+        return default
+    return value if value >= 0 else default
+
+
+# Connection pool of one process (the API and the worker have one each).
+# DB_POOL_SIZE=0 turns pooling off: every session opens its own connection.
+DB_POOL_SIZE = _pool_setting("DB_POOL_SIZE", 5)
+DB_MAX_OVERFLOW = _pool_setting("DB_MAX_OVERFLOW", 10)
+DB_POOL_TIMEOUT = _pool_setting("DB_POOL_TIMEOUT", 30)      # seconds to wait for a free connection
+DB_POOL_RECYCLE = _pool_setting("DB_POOL_RECYCLE", 1800)    # seconds before a connection is replaced

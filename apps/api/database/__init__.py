@@ -17,7 +17,20 @@ __all__ = [
     "get_db",
     "init_db",
     "close_db",
+    "release_connection",
 ]
+
+
+async def release_connection(db: AsyncSession) -> None:
+    """End the session's transaction, which gives its connection back to the pool.
+
+    For a route about to do something slow that needs no database: move a file,
+    or answer with a stream. FastAPI closes the session only after the response
+    has been sent, so without this the connection stays taken, idle in a
+    transaction, for as long as the transfer lasts. Loaded objects stay usable
+    (expire_on_commit=False) and the session reconnects if it is used again.
+    """
+    await db.commit()
 
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:

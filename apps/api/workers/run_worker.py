@@ -512,16 +512,22 @@ async def _keep_lease(run_id: UUID, worker_id: str) -> None:
     Staging a large input, fetching a large result or waiting for the object
     store can each take longer than one lease. Without renewal the run would
     look abandoned and be picked up a second time while still in hand. If the
-    worker dies, this stops with it and the lease expires as intended.
+    worker dies, this stops with it and the lease expires as intended. This is
+    the only renewal while a run is in hand. A missed one is retried soon rather
+    than a whole interval later, so that a database that comes back finds the
+    lease renewed before it can lapse.
     """
     interval = max(1.0, LEASE_SECONDS / 3)
+    delay = interval
     while True:
-        await asyncio.sleep(interval)
+        await asyncio.sleep(delay)
         try:
             async with AsyncSessionLocal() as db:
                 await RunRepository(db).renew_lease(run_id, worker_id, LEASE_SECONDS)
-        except Exception:  # noqa: BLE001 - a missed renewal is retried next round
+            delay = interval
+        except Exception:  # noqa: BLE001
             traceback.print_exc()
+            delay = min(interval, DATABASE_RETRY_SECONDS)
 
 
 async def process_run(
@@ -922,9 +928,7 @@ async def _poll_method_job(
         guarded by the run's own state."""
         nonlocal cancel_sent_at, timed_out_at, timed_out_limit, unreachable_since
         async with AsyncSessionLocal() as db:
-            run_repo = RunRepository(db)
-            await run_repo.renew_lease(run_id, worker_id, LEASE_SECONDS)
-            run = await run_repo.get_by_id(run_id)
+            run = await RunRepository(db).get_by_id(run_id)
         if run is None:
             return True
         if run.status in (RunStatus.DONE, RunStatus.ERROR, RunStatus.CANCELLED):

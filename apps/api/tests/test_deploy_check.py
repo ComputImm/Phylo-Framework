@@ -137,7 +137,7 @@ async def test_every_method_service_is_asked_and_the_silent_ones_are_named(monke
 # --------------------------------------------------------------------------- #
 def test_the_newest_revision_is_read_from_the_code():
     heads = check.migration_heads()
-    assert len(heads) == 1 and heads[0].startswith("016_")
+    assert len(heads) == 1 and heads[0].startswith("017_")
 
 
 @pytest.mark.integration

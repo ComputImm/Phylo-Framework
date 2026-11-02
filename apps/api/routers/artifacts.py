@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from apps.api.auth.access import ensure_run_access
 from apps.api.auth.dependencies import get_current_user_required
-from apps.api.database import get_db
+from apps.api.database import get_db, release_connection
 from apps.api.database.models import RunArtifact, StorageState, User
 from apps.api.repositories.artifact_repository import ArtifactRepository
 from apps.api.repositories.run_repository import RunRepository
@@ -129,6 +129,7 @@ async def download_artifact(
     artifact = await _load_artifact_or_404(artifact_id, current_user, db)
     if artifact.storage_state == StorageState.DELETED:
         raise HTTPException(410, "This artifact has been deleted.")
+    await release_connection(db)
     return _stream(artifact, disposition="attachment")
 
 
@@ -144,4 +145,5 @@ async def preview_artifact(
         raise HTTPException(410, "This artifact has been deleted.")
     if not artifact.is_previewable:
         raise HTTPException(415, "This artifact is not previewable; use the download endpoint.")
+    await release_connection(db)
     return _stream(artifact, disposition="inline")

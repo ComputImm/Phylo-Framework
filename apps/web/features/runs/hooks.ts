@@ -77,7 +77,13 @@ export function useRunQuota(enabled = true) {
   });
 }
 
-/** Live run-queue dashboard. Polls every ~2.5s while there is an active or queued run. */
+/**
+ * How often the dashboard asks while runs are in progress. The worker looks at
+ * a running job every 10 seconds, so asking more often finds nothing new.
+ */
+const DASHBOARD_REFRESH_MS = 10_000;
+
+/** Live run-queue dashboard. Polls while there is an active or queued run. */
 export function useDashboardRuns(enabled = true) {
   return useQuery<DashboardRunsResponse>({
     queryKey: ["dashboardRuns"],
@@ -85,10 +91,10 @@ export function useDashboardRuns(enabled = true) {
     enabled,
     refetchInterval: (query) => {
       const data = query.state.data;
-      if (!data) return 2500;
+      if (!data) return DASHBOARD_REFRESH_MS;
       const hasActive = !!data.active;
       const hasQueue = (data.queue?.length ?? 0) > 0;
-      return hasActive || hasQueue ? 2500 : false;
+      return hasActive || hasQueue ? DASHBOARD_REFRESH_MS : false;
     },
   });
 }

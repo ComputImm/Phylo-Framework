@@ -25,7 +25,7 @@ from apps.api.auth.password import (
     verify_password,
 )
 from apps.api.config import FRONTEND_URL, IS_PRODUCTION
-from apps.api.database import get_db
+from apps.api.database import get_db, release_connection
 from apps.api.database.models import User
 from apps.api.repositories.user_repository import UserRepository
 from apps.api.auth.verification import is_verified, verification_expire_hours, verification_required
@@ -287,6 +287,8 @@ async def register(
             # Probably the same person trying again: send a fresh link. The
             # password of the existing account is not changed.
             await _start_verification(existing_user, user_repo, background_tasks)
+    # The email goes out after the response, with the session still open.
+    await release_connection(db)
     return JSONResponse(
         status_code=status.HTTP_202_ACCEPTED,
         content={"verification_required": True, "message": REGISTRATION_ACCEPTED},

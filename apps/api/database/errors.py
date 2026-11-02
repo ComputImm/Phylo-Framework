@@ -47,6 +47,9 @@ def database_unavailable(exc: Optional[BaseException]) -> bool:
             return True
         if isinstance(exc, (sa_exc.InterfaceError, sa_exc.OperationalError)):
             return True
+        # Every pooled connection stayed busy for as long as a caller may wait.
+        if isinstance(exc, sa_exc.TimeoutError):
+            return True
         if isinstance(exc, _SERVER_AWAY):
             return True
         if isinstance(exc, _NETWORK) and _raised_in_driver(exc):
