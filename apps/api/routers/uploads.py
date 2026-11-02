@@ -17,7 +17,7 @@ from starlette.requests import ClientDisconnect
 from apps.api.auth.dependencies import get_current_user_required
 from apps.api.auth.verification import require_verified_user
 from apps.api.config import STORAGE_QUOTA_PER_USER_BYTES
-from apps.api.database import get_db
+from apps.api.database import get_db, release_connection
 from apps.api.database.models import StorageType, UploadSessionStatus, User
 from apps.api.repositories.file_repository import FileRepository
 from apps.api.repositories.upload_session_repository import UploadSessionRepository
@@ -176,6 +176,7 @@ async def upload_content(
     await repo.mark_uploading(upload_id, str(tmp_path))
 
     used = await file_repo.get_total_size_by_user(current_user.id)
+    await release_connection(db)
     quota = STORAGE_QUOTA_PER_USER_BYTES
     max_bytes = retention.max_upload_bytes()
     bytes_received = 0

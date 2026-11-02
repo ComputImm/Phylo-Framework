@@ -24,7 +24,7 @@ from typing import Any
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from apps.api.database.base import AsyncSessionLocal
+from apps.api.database.base import AsyncSessionLocal, close_db
 from apps.api.database.models import Run
 from apps.api.services.tree_contract import _lightweight_result, _slim_dowser_dta
 
@@ -100,6 +100,7 @@ async def main() -> None:
             f"\nTotal: {total_before:,} -> {total_after:,} bytes "
             f"({(total_before - total_after) / max(1, total_before) * 100.0:.1f}% saved)"
         )
+    await close_db()
 
 
 if __name__ == "__main__":

@@ -148,7 +148,6 @@ class Run(Base):
         UUID(as_uuid=True),
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=True,  # Nullable for backward compatibility
-        index=True
     )
     input_file_id = Column(
         UUID(as_uuid=True),
@@ -156,12 +155,11 @@ class Run(Base):
         nullable=True,
         index=True,
     )
-    method_id = Column(String(50), nullable=False, index=True)
+    method_id = Column(String(50), nullable=False)
     status = Column(
         Enum(RunStatus, native_enum=False),
         default=RunStatus.PENDING,
         nullable=False,
-        index=True
     )
     progress = Column(
         Integer,
@@ -182,7 +180,9 @@ class Run(Base):
     # Set by the cancel endpoint; observed by the worker to terminate the job.
     cancel_requested_at = Column(DateTime(timezone=True), nullable=True)
     # DB-backed worker locking: a claimed run is leased until this time.
-    worker_lease_until = Column(DateTime(timezone=True), nullable=True, index=True)
+    # Not indexed: renewed once a minute per run, and every query on it also
+    # filters on status.
+    worker_lease_until = Column(DateTime(timezone=True), nullable=True)
     # Optional, useful for debugging which worker owns the run.
     worker_id = Column(String(255), nullable=True)
     # Global dispatch ticket, assigned from the `runs_dispatch_seq` sequence when
@@ -198,7 +198,6 @@ class Run(Base):
         DateTime(timezone=True),
         server_default=func.now(),
         nullable=False,
-        index=True
     )
     started_at = Column(DateTime(timezone=True), nullable=True)
     finished_at = Column(DateTime(timezone=True), nullable=True)
@@ -223,7 +222,6 @@ class Run(Base):
 
     __table_args__ = (
         CheckConstraint("progress >= 0 AND progress <= 100", name="ck_runs_progress"),
-        Index("idx_runs_user_id", "user_id"),
         Index("idx_runs_status", "status"),
         Index("idx_runs_created_at", "created_at"),
         Index("idx_runs_method_id", "method_id"),

@@ -8,7 +8,7 @@ from fastapi.responses import JSONResponse, StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from apps.api.auth.dependencies import get_current_user_required
-from apps.api.database import get_db
+from apps.api.database import get_db, release_connection
 from apps.api.database.models import StorageState, User
 from apps.api.repositories.file_repository import FileRepository
 from apps.api.services.dataset_service import DeleteOutcome, delete_dataset
@@ -56,6 +56,7 @@ async def download_dataset(
     }
     if f.file_size:
         headers["Content-Length"] = str(f.file_size)
+    await release_connection(db)
     return StreamingResponse(
         storage().stream_download(f.storage_path),
         media_type=f.mime_type or "application/octet-stream",
@@ -86,6 +87,7 @@ async def dataset_fasta_id_style(
     if not name.endswith(FASTA_EXTENSIONS):
         return {"style": STYLE_PLAIN, "headers_checked": 0, "truncated": False}
 
+    await release_connection(db)
     buf = bytearray()
     truncated = False
     async for chunk in storage().stream_download(f.storage_path):

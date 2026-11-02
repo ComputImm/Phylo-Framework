@@ -231,6 +231,10 @@ undocumented.
 
 | Variable | Default | Meaning |
 |---|---|---|
+| `DB_POOL_SIZE` | `5` | Database connections the API and the worker each keep open and reuse. `0` turns pooling off, which costs the database a new process for every request |
+| `DB_MAX_OVERFLOW` | `10` | Extra connections each may open under load, closed again afterwards. Together the two keep the total at 30 by default; PostgreSQL allows 100 |
+| `DB_POOL_TIMEOUT` | `30` | Seconds a request waits for a free connection before it is answered with 503 |
+| `DB_POOL_RECYCLE` | `1800` | Seconds after which a connection is replaced |
 | `WORKER_POLL_INTERVAL` | `3` | Seconds between the worker's looks at the queue |
 | `WORKER_METHOD_POLL_INTERVAL` | `10` | Seconds between status requests for a running job. A finished run becomes visible at the next one |
 | `WORKER_LEASE_SECONDS` | `180` | How long a worker's claim on a run lasts without renewal. After that another worker may take the run over |

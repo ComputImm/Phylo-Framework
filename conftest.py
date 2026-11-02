@@ -23,6 +23,9 @@ os.environ.update({
     "GOOGLE_CLIENT_ID": "",
     "GOOGLE_CLIENT_SECRET": "",
     "ENV": "test",
+    # Every test has its own event loop, and a pooled connection cannot leave
+    # the loop that opened it.
+    "DB_POOL_SIZE": "0",
     **{f"METHOD_{m.upper()}_URL": f"http://127.0.0.1:{p}" for m, p in
        [("dowser", 58001), ("gctree", 58002), ("brepphylo", 58003), ("clonaltree", 58004)]},
 })

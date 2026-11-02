@@ -8,6 +8,7 @@ from sqlalchemy import String, and_, case, cast, delete, exists, false, func, or
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import defer
 
 from apps.api.database.models import (
     ACTIVE_RUN_STATUSES,
@@ -123,10 +124,19 @@ class RunRepository(BaseRepository[Run]):
         )
         return [(row[0], bool(row[1])) for row in result.all()]
 
+    async def get_without_result(self, run_id: UUID) -> Optional[Run]:
+        """A run without its `result` document, which can be large. Reading
+        ``run.result`` on what this returns raises instead of loading it."""
+        result = await self.session.execute(
+            select(Run).options(defer(Run.result, raiseload=True)).where(Run.id == run_id)
+        )
+        return result.scalars().first()
+
     async def get_active_turn_run_for_user(self, user_id: UUID) -> Optional[Run]:
         """The user's active-turn run: RUNNING, or QUEUED with dispatch_seq assigned."""
         result = await self.session.execute(
             select(Run)
+            .options(defer(Run.result, raiseload=True))
             .where(Run.user_id == user_id)
             .where(self._active_turn_predicate())
             .order_by(Run.dispatch_seq.asc().nulls_last(), Run.created_at.asc())
@@ -138,6 +148,7 @@ class RunRepository(BaseRepository[Run]):
         """The user's waiting-behind list: QUEUED with no dispatch_seq, FIFO by creation."""
         result = await self.session.execute(
             select(Run)
+            .options(defer(Run.result, raiseload=True))
             .where(Run.user_id == user_id)
             .where(Run.status == RunStatus.QUEUED)
             .where(Run.dispatch_seq.is_(None))
@@ -342,7 +353,7 @@ class RunRepository(BaseRepository[Run]):
         """Get a user's runs, optionally filtered (all filters ANDed with the
         per-user scope). `run_id`/`dataset` are case-insensitive substring
         matches; `created_on` matches runs created on that calendar day."""
-        stmt = select(Run).where(Run.user_id == user_id)
+        stmt = select(Run).options(defer(Run.result, raiseload=True)).where(Run.user_id == user_id)
 
         if run_id:
             stmt = stmt.where(cast(Run.id, String).ilike(f"%{run_id.strip()}%"))
@@ -680,19 +691,28 @@ class RunRepository(BaseRepository[Run]):
         """Update the high-level stage (and optional progress/message).
 
         Progress is only set on stage transitions and never decreases.
+
+        Only touches the row if this changes it, so the worker can report on
+        every poll at no cost. Returns the run if it was updated; None if there
+        was nothing to change or the run is no longer active.
         """
         values: dict[str, object] = {}
+        changes = []
         if stage is not None:
             values["stage"] = stage
+            changes.append(Run.stage.is_distinct_from(stage))
         if message is not None:
             values["stage_message"] = message
             values["message"] = message
+            changes.append(Run.stage_message.is_distinct_from(message))
+            changes.append(Run.message.is_distinct_from(message))
         if progress is not None:
             bounded = max(0, min(100, progress))
             values["progress"] = case(
                 (Run.progress < bounded, bounded),
                 else_=Run.progress,
             )
+            changes.append(Run.progress < bounded)
         if not values:
             return await self.get_by_id(run_id)
 
@@ -700,6 +720,7 @@ class RunRepository(BaseRepository[Run]):
             update(Run)
             .where(Run.id == run_id)
             .where(Run.status.in_(ACTIVE_RUN_STATUSES))
+            .where(or_(*changes))
             .values(**values)
             .returning(Run)
         )
@@ -1101,6 +1122,7 @@ class RunRepository(BaseRepository[Run]):
         )
         stmt = (
             select(Run)
+            .options(defer(Run.result, raiseload=True))
             .where(or_(has_input, has_file_for_run))
             .where(Run.id != exclude_run_id)
             .where(Run.status == RunStatus.DONE)

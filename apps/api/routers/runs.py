@@ -231,13 +231,14 @@ async def _load_run_with_access(
     *,
     current_user: User,
     run_repo: RunRepository,
+    with_result: bool = True,
 ) -> Run:
     try:
         run_uuid = UUID(run_id)
     except ValueError:
         raise HTTPException(400, "Invalid run ID format")
 
-    run = await run_repo.get_by_id(run_uuid)
+    run = await (run_repo.get_by_id(run_uuid) if with_result else run_repo.get_without_result(run_uuid))
     if not run:
         raise HTTPException(404, "Run not found")
 
@@ -593,7 +594,7 @@ async def list_same_dataset_runs(
     try:
         run_repo = RunRepository(db)
         file_repo = FileRepository(db)
-        run = await _load_run_with_access(run_id, current_user=current_user, run_repo=run_repo)
+        run = await _load_run_with_access(run_id, current_user=current_user, run_repo=run_repo, with_result=False)
         input_file_id = getattr(run, "input_file_id", None)
         file_ids = []
         if input_file_id is not None:
@@ -625,7 +626,7 @@ async def run_status(
     """Get run status (status, progress, stage, stage_message, method_id, params, dataset, timestamps)."""
     run_repo = RunRepository(db)
     file_repo = FileRepository(db)
-    run = await _load_run_with_access(run_id, current_user=current_user, run_repo=run_repo)
+    run = await _load_run_with_access(run_id, current_user=current_user, run_repo=run_repo, with_result=False)
 
     dataset_name, dataset_files = await _resolve_dataset_meta(run, file_repo)
     return _public_status(run, dataset_name=dataset_name, dataset_files=dataset_files)
