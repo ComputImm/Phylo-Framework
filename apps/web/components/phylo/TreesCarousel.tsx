@@ -7,9 +7,10 @@ import { RunsApi } from "@/features/runs/api";
 import { type LineagePlot, type RunTree, type RunTreePayload } from "@phylo/contracts";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import TreeSettingsPanel from "@/components/phylo/tree/TreeSettingsPanel";
 import TreeViewport from "@/components/phylo/tree/TreeViewport";
-import TreeOverlay from "@/components/phylo/tree/TreeOverlay";
+import Overlay from "@/components/common/Overlay";
 import { collectColorFields } from "@/components/phylo/tree/core";
 import type { CollapseSignal } from "@/components/phylo/tree/TreeView";
 
@@ -20,6 +21,8 @@ const VIEW_LABELS: Record<"method" | "phylogeny" | "lineage", string> = {
 };
 
 const TIP_SIZE_FIELD = "abundance";
+const CAROUSEL_BUTTON =
+  "rounded border px-3 py-1.5 text-sm inline-flex items-center gap-1 disabled:opacity-50 pointer-coarse:min-h-11";
 
 type TreesCarouselProps = {
   runId?: string | null;
@@ -259,12 +262,12 @@ export default function TreesCarousel({
   }
 
   return (
-    <Card className="relative overflow-hidden p-4 space-y-3">
+    <Card className="relative overflow-hidden p-3 space-y-3 sm:p-4">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b pb-2">
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
           {total > 1 && (
             <Select value={String(idx)} onValueChange={(v) => setIdx(Number(v))}>
-              <SelectTrigger className="w-[200px]">
+              <SelectTrigger className="w-full sm:w-[200px]">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -279,7 +282,7 @@ export default function TreesCarousel({
 
           {tabs.length > 0 && (
             <Select value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)}>
-              <SelectTrigger className="w-[190px]">
+              <SelectTrigger className="w-full sm:w-[190px]">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -299,7 +302,8 @@ export default function TreesCarousel({
               type="button"
               variant="outline"
               size="sm"
-              className="gap-1.5"
+              // On phones a tree has its own Explore button; a method image does not.
+              className={cn("gap-1.5", activeTab !== "method" && "max-md:hidden")}
               onClick={() => setExpandOpen(true)}
             >
               <Maximize2 className="size-4" />
@@ -321,21 +325,22 @@ export default function TreesCarousel({
         </div>
       </div>
 
-      <div className="flex items-center justify-between gap-3">
+      {/* Below `lg` the tree takes the full width, with Prev/Next on a row beneath it. */}
+      <div className="flex flex-wrap items-center justify-between gap-3 lg:flex-nowrap">
         <button
-          className="rounded border px-3 py-1.5 text-sm inline-flex items-center gap-1 disabled:opacity-50"
+          className={cn(CAROUSEL_BUTTON, total <= 1 && "max-lg:hidden")}
           onClick={() => canPrev && setIdx((v) => Math.max(0, v - 1))}
           disabled={!canPrev}
         >
           <ChevronLeft className="w-4 h-4" /> Prev
         </button>
 
-        <div className="flex-1 overflow-auto space-y-3">
-          <TreeViewport {...viewportProps} />
+        <div className="order-first w-full min-w-0 overflow-auto space-y-3 lg:order-none lg:w-auto lg:flex-1">
+          <TreeViewport {...viewportProps} onExplore={() => setExpandOpen(true)} />
         </div>
 
         <button
-          className="rounded border px-3 py-1.5 text-sm inline-flex items-center gap-1 disabled:opacity-50"
+          className={cn(CAROUSEL_BUTTON, total <= 1 && "max-lg:hidden")}
           onClick={() => canNext && setIdx((v) => Math.min(total - 1, v + 1))}
           disabled={!canNext}
         >
@@ -363,14 +368,14 @@ export default function TreesCarousel({
         onExpandAll={() => setCollapseSignal({ type: "expandAll", nonce: Date.now() })}
       />
 
-      <TreeOverlay
+      <Overlay
         open={expandOpen}
         onClose={() => setExpandOpen(false)}
         size="full"
         title={`${VIEW_LABELS[activeTab]} — ${treeLabel(idx, current?.cloneId)}`}
       >
-        <TreeViewport {...viewportProps} viewportHeight="78vh" />
-      </TreeOverlay>
+        <TreeViewport {...viewportProps} viewportHeight="100%" />
+      </Overlay>
     </Card>
   );
 }

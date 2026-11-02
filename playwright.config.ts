@@ -13,7 +13,12 @@ export default defineConfig({
   reporter: [['list'], ['html', {outputFolder: 'coverage/browser', open: 'never'}],
     ['junit', {outputFile: 'coverage/browser/junit.xml'}]],
   use: {baseURL: 'http://127.0.0.1:53000', trace: 'retain-on-failure', screenshot: 'only-on-failure'},
-  projects: [{name: 'chromium', use: {...devices['Desktop Chrome']}}],
+  projects: [
+    {name: 'chromium', use: {...devices['Desktop Chrome']}},
+    // Layout only: Chromium, because that is the one browser CI installs. responsive.spec.ts runs on all three.
+    {name: 'phone', testMatch: /responsive\.spec\.ts/, use: {...devices['Pixel 7']}},
+    {name: 'tablet', testMatch: /responsive\.spec\.ts/, use: {...devices['Desktop Chrome'], viewport: {width: 820, height: 1180}, hasTouch: true, isMobile: true}},
+  ],
   webServer: {
     command: 'npm -w @phylo/contracts run build && npm -w web run dev -- --hostname 127.0.0.1 --port 53000',
     url: 'http://127.0.0.1:53000/auth',

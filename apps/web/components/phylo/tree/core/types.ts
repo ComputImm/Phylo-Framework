@@ -107,6 +107,12 @@ export type LayoutEdge = {
   ty: number;
 };
 
+/** What the node-detail modal shows for a clicked node. */
+export type NodeDetail = {
+  title: string;
+  rows: Array<{ key: string; value: string }>;
+};
+
 export type TreeLayout = {
   nodes: LayoutNode[];
   edges: LayoutEdge[];

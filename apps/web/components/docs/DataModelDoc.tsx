@@ -130,7 +130,7 @@ export function DataModelDoc() {
                 <h4 className="text-sm font-semibold">Notable analyses</h4>
                 <div className="flex flex-wrap gap-1.5">
                   {m.capabilities.map((cap) => (
-                    <Badge key={cap} variant="outline" className="font-normal">
+                    <Badge key={cap} variant="outline" className="whitespace-normal font-normal">
                       {cap}
                     </Badge>
                   ))}

@@ -22,6 +22,12 @@ export const MAX_LABEL_AREA = 120; // max label column width (px)
 // replaces this with a measured container width via ResizeObserver).
 export const TARGET_PLOT_WIDTH = 960;
 
+// Panes narrower than this lay out to their own width instead of TARGET_PLOT_WIDTH,
+// or fit zoom would shrink labels below reading size.
+export const NARROW_PANE_WIDTH = 900;
+export const NARROW_PANE_LABEL_RESERVE = 250; // room kept beside the plot for labels, padding and radii (px)
+export const MIN_NARROW_PLOT_WIDTH = 130; // below this, branches become too short to read (px)
+
 // Minimum on-screen content size for the (Phase-1) scroll containers. These are
 // scroll-era hacks slated for removal in Phase 2 alongside the scroll containers.
 export const MIN_CONTENT_WIDTH = 920;

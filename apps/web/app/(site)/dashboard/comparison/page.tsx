@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef, type CSSProperties } from "react";
+import SnapPager from "@/components/common/SnapPager";
 import { useQuery } from "@tanstack/react-query";
 import { useSearchParams } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -119,6 +120,23 @@ function displayFieldsFromAttrs(nodeAttributes: Record<string, Record<string, un
   return options;
 }
 
+function traceLabel(index: number): string {
+  return `Trace ${index + 1}`;
+}
+
+function PlainColumnHeader({ title, onRemove }: { title: string; onRemove?: () => void }) {
+  return (
+    <CardHeader className="pb-2 flex flex-row items-start justify-between gap-2">
+      <CardTitle className="text-base">{title}</CardTitle>
+      {onRemove && (
+        <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={onRemove} aria-label="Remove">
+          <X className="h-4 w-4" />
+        </Button>
+      )}
+    </CardHeader>
+  );
+}
+
 function ComparisonColumn({
   title,
   run,
@@ -137,6 +155,7 @@ function ComparisonColumn({
   placeholder,
   onRemove,
   showRemove,
+  onExplore,
 }: {
   title: string;
   run: ColumnRun | null;
@@ -155,6 +174,7 @@ function ComparisonColumn({
   placeholder: React.ReactNode;
   onRemove?: () => void;
   showRemove?: boolean;
+  onExplore: () => void;
 }) {
   const tree = run?.trees?.[treeIndex];
   const treeId = tree?.treeId ?? null;
@@ -182,15 +202,8 @@ function ComparisonColumn({
 
   if (error) {
     return (
-      <Card className="min-w-[280px] w-full">
-        <CardHeader className="pb-2 flex flex-row items-start justify-between gap-2">
-          <CardTitle className="text-base">{title}</CardTitle>
-          {showRemove && onRemove && (
-            <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={onRemove} aria-label="Remove">
-              <X className="h-4 w-4" />
-            </Button>
-          )}
-        </CardHeader>
+      <Card className="w-full">
+        <PlainColumnHeader title={title} onRemove={showRemove ? onRemove : undefined} />
         <CardContent>
           <p className="text-sm text-destructive">{error}</p>
         </CardContent>
@@ -200,22 +213,15 @@ function ComparisonColumn({
 
   if (!run) {
     return (
-      <Card className="min-w-[280px] w-full">
-        <CardHeader className="pb-2 flex flex-row items-start justify-between gap-2">
-          <CardTitle className="text-base">{title}</CardTitle>
-          {showRemove && onRemove && (
-            <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={onRemove} aria-label="Remove">
-              <X className="h-4 w-4" />
-            </Button>
-          )}
-        </CardHeader>
+      <Card className="w-full">
+        <PlainColumnHeader title={title} onRemove={showRemove ? onRemove : undefined} />
         <CardContent>{placeholder}</CardContent>
       </Card>
     );
   }
 
   return (
-    <Card className="min-w-[280px] w-full flex flex-col overflow-visible">
+    <Card className="w-full flex flex-col overflow-visible">
       <CardHeader className="pb-2 space-y-2">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
@@ -249,7 +255,7 @@ function ComparisonColumn({
           <div className="flex flex-wrap items-center gap-2">
             <Label className="text-xs shrink-0">Tree</Label>
             <Select value={String(treeIndex)} onValueChange={(v) => onTreeIndexChange(Number(v))}>
-              <SelectTrigger className="w-[140px]">
+              <SelectTrigger className="flex-1 sm:w-[140px] sm:flex-none">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -262,7 +268,7 @@ function ComparisonColumn({
             </Select>
             {displayFields.length > 0 && (
               <Select value={displayIdField} onValueChange={onDisplayIdFieldChange}>
-                <SelectTrigger className="ml-auto h-8 w-[130px] text-xs">
+                <SelectTrigger className="h-8 flex-1 text-xs sm:ml-auto sm:w-[130px] sm:flex-none">
                   <SelectValue placeholder="ID field" />
                 </SelectTrigger>
                 <SelectContent>
@@ -296,6 +302,7 @@ function ComparisonColumn({
             germlineLabel={germlineLabel}
             height={420}
             className="shrink-0"
+            onExplore={onExplore}
           />
         )}
         {run.trees.length > 0 && !hasLineage && !payloadLoading && (
@@ -327,6 +334,11 @@ export default function ComparisonPage() {
   const effectiveColorField = colorByField === "auto" ? "abundance" : colorByField;
   const [displayIdField, setDisplayIdField] = useState("sequence_id");
   const [expandOpen, setExpandOpen] = useState(false);
+  const [expandPanelId, setExpandPanelId] = useState<string | undefined>(undefined);
+  const openExpand = useCallback((panelId?: string) => {
+    setExpandPanelId(panelId);
+    setExpandOpen(true);
+  }, []);
   const nextPanelIdRef = useRef(1);
 
   const methodNameById = useMemo(() => {
@@ -427,14 +439,16 @@ export default function ComparisonPage() {
     if (baseRun) {
       refs.push({
         panelId: "base",
+        label: "Base",
         runId: baseRun.runId,
         treeIndex: baseTreeIndex,
       });
     }
-    comparisonPanels.forEach((panel) => {
+    comparisonPanels.forEach((panel, index) => {
       if (!panel.runId) return;
       refs.push({
         panelId: panel.panelId,
+        label: traceLabel(index),
         runId: panel.runId,
         treeIndex: panel.treeIndex,
       });
@@ -499,6 +513,9 @@ export default function ComparisonPage() {
           <div className="flex flex-wrap items-center gap-2">
             <Input
               placeholder="e.g. full sequence_id…"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
               value={highlightSequence}
               onChange={(e) => {
                 setHighlightSequence(e.target.value);
@@ -544,7 +561,7 @@ export default function ComparisonPage() {
       {/* Base + comparison setup */}
       <section className="space-y-3">
         <div className="flex flex-wrap items-end gap-3">
-          <div className="space-y-1.5">
+          <div className="w-full space-y-1.5 sm:w-auto">
             <Label htmlFor="base-run-id">Base run</Label>
             <Input
               id="base-run-id"
@@ -552,7 +569,10 @@ export default function ComparisonPage() {
               value={baseRunIdInput}
               onChange={(e) => setBaseRunIdInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && loadBaseRun()}
-              className="w-72 font-mono text-sm"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
+              className="w-full font-mono sm:w-72"
             />
           </div>
           <Button onClick={loadBaseRun} disabled={!baseRunIdInput.trim() || baseStatusLoading}>
@@ -591,7 +611,7 @@ export default function ComparisonPage() {
             <h2 className="text-lg font-medium">Side-by-side Sequence Trace</h2>
             <SequenceTraceInfoIcon />
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <div className="flex items-center gap-1.5">
               <Label className="text-xs shrink-0">Colour by</Label>
               <Select value={colorByField} onValueChange={setColorByField}>
@@ -617,7 +637,7 @@ export default function ComparisonPage() {
               variant="outline"
               size="sm"
               className="gap-1.5"
-              onClick={() => setExpandOpen(true)}
+              onClick={() => openExpand()}
               disabled={expandTrees.length === 0}
             >
               <Maximize2 className="h-4 w-4" />
@@ -628,14 +648,14 @@ export default function ComparisonPage() {
         <p className="text-sm text-muted-foreground">
           Each panel keeps its own tree selection. Choose a run in each Sequence Trace slot to view trees side-by-side.
         </p>
-        <div
-          className="grid gap-4 overflow-x-auto pb-2"
-          style={{
-            gridTemplateColumns: `repeat(${Math.max(1, 1 + comparisonPanels.length)}, minmax(280px, 1fr))`,
-          }}
+        <SnapPager
+          labels={["Base", ...comparisonPanels.map((_, index) => traceLabel(index))]}
+          className="md:grid md:grid-cols-[repeat(var(--panel-count),minmax(280px,1fr))] md:gap-4 md:overflow-x-auto md:pb-2"
+          style={{ "--panel-count": 1 + comparisonPanels.length } as CSSProperties}
         >
           <ComparisonColumn
             title="Base"
+            onExplore={() => openExpand("base")}
             run={baseRun}
             treeIndex={baseTreeIndex}
             onTreeIndexChange={setBaseTreeIndex}
@@ -662,6 +682,7 @@ export default function ComparisonPage() {
             <ComparisonSlot
               key={panel.panelId}
               index={index}
+              onExplore={() => openExpand(panel.panelId)}
               runId={panel.runId}
               sameDatasetList={sameDatasetList ?? []}
               selectedIds={[baseRunId, ...comparisonPanels.map((candidate) => candidate.runId)].filter(
@@ -680,13 +701,14 @@ export default function ComparisonPage() {
               methodNameById={methodNameById}
             />
           ))}
-        </div>
+        </SnapPager>
       </section>
 
       <CompareExpandDialog
         open={expandOpen}
         onOpenChange={setExpandOpen}
         trees={expandTrees}
+        initialPanelId={expandPanelId}
         highlightText={highlightSequence}
         displayIdField={displayIdField}
         methodNameById={methodNameById}
@@ -708,6 +730,7 @@ function RunLineageBlock({
   displayIdField,
   onDisplayIdFieldChange,
   isLoading,
+  onExplore,
 }: {
   run: ColumnRun | null;
   treeIndex: number;
@@ -720,6 +743,7 @@ function RunLineageBlock({
   displayIdField: string;
   onDisplayIdFieldChange: (v: string) => void;
   isLoading?: boolean;
+  onExplore: () => void;
 }) {
   const tree = run?.trees?.[treeIndex];
   const treeId = tree?.treeId ?? null;
@@ -747,7 +771,7 @@ function RunLineageBlock({
         <div className="flex flex-wrap items-center gap-2">
           <Label className="text-xs shrink-0">Tree</Label>
           <Select value={String(treeIndex)} onValueChange={(v) => onTreeIndexChange(Number(v))}>
-            <SelectTrigger className="w-[140px]">
+            <SelectTrigger className="flex-1 sm:w-[140px] sm:flex-none">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -760,7 +784,7 @@ function RunLineageBlock({
           </Select>
           {displayFields.length > 0 && (
             <Select value={displayIdField} onValueChange={onDisplayIdFieldChange}>
-              <SelectTrigger className="ml-auto h-8 w-[130px] text-xs">
+              <SelectTrigger className="h-8 flex-1 text-xs sm:ml-auto sm:w-[130px] sm:flex-none">
                 <SelectValue placeholder="ID field" />
               </SelectTrigger>
               <SelectContent>
@@ -793,6 +817,7 @@ function RunLineageBlock({
           colorByField={colorByField}
           germlineLabel={lineagePlot?.meta?.germlineLabel ?? null}
           height={420}
+          onExplore={onExplore}
         />
       )}
       {run.trees.length > 0 && !hasLineage && !payloadLoading && (
@@ -822,6 +847,7 @@ function ComparisonSlot({
   displayIdField,
   onDisplayIdFieldChange,
   methodNameById,
+  onExplore,
 }: {
   index: number;
   runId: string;
@@ -839,6 +865,7 @@ function ComparisonSlot({
   displayIdField: string;
   onDisplayIdFieldChange: (v: string) => void;
   methodNameById: Map<string, string>;
+  onExplore: () => void;
 }) {
   const { data: status } = useRunStatus(runId || undefined);
   const done = status?.status === "DONE";
@@ -874,7 +901,7 @@ function ComparisonSlot({
   }, [onTreeIndexChange, runIdentity, runTreeCount, treeIndex]);
 
   return (
-    <Card className="min-w-[280px] w-full flex flex-col overflow-visible">
+    <Card className="w-full flex flex-col overflow-visible">
       <CardHeader className="pb-2 flex flex-row items-start justify-between gap-2">
         <CardTitle className="text-base flex items-center gap-1.5">
           Sequence Trace {index + 1}
@@ -924,6 +951,7 @@ function ComparisonSlot({
               displayIdField={displayIdField}
               onDisplayIdFieldChange={onDisplayIdFieldChange}
               isLoading={treesLoading}
+              onExplore={onExplore}
             />
           </>
         ) : (

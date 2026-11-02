@@ -4,6 +4,14 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { ClipboardCopy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  ResponsiveTable,
+  ResponsiveTableBody,
+  ResponsiveTableCell,
+  ResponsiveTableHeader,
+  ResponsiveTableRow,
+  type StackBelow,
+} from "@/components/ui/responsive-table";
 import { notify } from "@/lib/notify";
 
 export type DataColumn<T> = {
@@ -13,8 +21,15 @@ export type DataColumn<T> = {
   render?: (row: T) => ReactNode;
   /** Plain-text value used for search/copy. Defaults to the stringified `key` value. */
   value?: (row: T) => string;
+  /** Keep the value on one line while the table has room for its columns. */
+  noWrap?: boolean;
   className?: string;
 };
+
+function stackBelowFor(columnCount: number): StackBelow {
+  if (columnCount <= 3) return "sm";
+  return columnCount <= 5 ? "md" : "lg";
+}
 
 function defaultValue<T>(row: T, key: string): string {
   const v = (row as Record<string, unknown>)[key];
@@ -109,38 +124,35 @@ export default function DataTable<T>({
         </div>
       )}
 
-      <div className="overflow-x-auto">
-        <table className="w-full text-xs">
-          <thead className="bg-muted/40">
-            <tr>
-              {columns.map((col) => (
-                <th key={col.key} className="whitespace-nowrap px-3 py-2 text-left font-medium">
-                  {col.header}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {pageRows.length === 0 ? (
-              <tr>
-                <td colSpan={columns.length} className="px-3 py-6 text-center text-muted-foreground">
-                  {emptyMessage}
-                </td>
-              </tr>
-            ) : (
-              pageRows.map((row, rowIdx) => (
-                <tr key={`row-${start + rowIdx}`} className="border-t align-top">
-                  {columns.map((col) => (
-                    <td key={col.key} className={col.className ?? "px-3 py-2"}>
-                      {col.render ? col.render(row) : defaultValue(row, col.key)}
-                    </td>
-                  ))}
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+      <ResponsiveTable
+        stackBelow={stackBelowFor(columns.length)}
+        labelPlacement="side"
+        tableClassName="text-xs"
+      >
+        <ResponsiveTableHeader
+          className="bg-muted/40"
+          columns={columns.map((col) => ({ label: col.header, className: "whitespace-nowrap px-3 py-2" }))}
+        />
+        <ResponsiveTableBody>
+          {pageRows.length === 0 ? (
+            <ResponsiveTableRow>
+              <ResponsiveTableCell colSpan={columns.length} className="px-3 py-6 text-center text-muted-foreground">
+                {emptyMessage}
+              </ResponsiveTableCell>
+            </ResponsiveTableRow>
+          ) : (
+            pageRows.map((row, rowIdx) => (
+              <ResponsiveTableRow key={`row-${start + rowIdx}`} className="border-t border-b-0 px-3">
+                {columns.map((col) => (
+                  <ResponsiveTableCell key={col.key} label={col.header} noWrap={col.noWrap} className={col.className}>
+                    {col.render ? col.render(row) : defaultValue(row, col.key)}
+                  </ResponsiveTableCell>
+                ))}
+              </ResponsiveTableRow>
+            ))
+          )}
+        </ResponsiveTableBody>
+      </ResponsiveTable>
 
       <div className="flex flex-wrap items-center justify-between gap-3 border-t px-4 py-3 text-xs">
         <span className="text-muted-foreground">

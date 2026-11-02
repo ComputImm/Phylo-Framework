@@ -12,6 +12,13 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  ResponsiveTable,
+  ResponsiveTableBody,
+  ResponsiveTableCell,
+  ResponsiveTableHeader,
+  ResponsiveTableRow,
+} from "@/components/ui/responsive-table";
 import { Button } from "@/components/ui/button";
 import { ExternalLink, ChevronLeft, ChevronRight, Copy, GitCompare } from "lucide-react";
 import { Loading } from "@/components/ui/loading";
@@ -54,6 +61,9 @@ function statusBadge(status: string) {
     </span>
   );
 }
+
+const RESULTS_EXPIRED_REASON =
+  "The results of this run were removed at the end of the retention period. The run itself stays in your history.";
 
 export default function RunHistoryPage() {
   const [page, setPage] = useState(0);
@@ -104,112 +114,123 @@ export default function RunHistoryPage() {
           )}
           {!isLoading && !error && runs && runs.length > 0 && (
             <>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b">
-                      <th className="text-left py-3 px-2 font-medium">Run ID</th>
-                      <th className="text-left py-3 px-2 font-medium">Method</th>
-                      <th className="text-left py-3 px-2 font-medium">Dataset</th>
-                      <th className="text-left py-3 px-2 font-medium">Status</th>
-                      <th className="text-left py-3 px-2 font-medium">Duration</th>
-                      <th className="text-left py-3 px-2 font-medium">Created</th>
-                      <th className="text-right py-3 px-2 font-medium">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {runs.map((run) => {
-                      const datasetLabel = formatDatasetLabel(run.dataset_name, run.dataset_files);
-                      const durationLabel = formatRunDuration(run.started_at, run.finished_at);
-                      return (
-                        <tr key={run.id} className="border-b last:border-0">
-                          <td className="py-3 px-2 font-mono text-xs">
-                            <div className="flex items-center gap-1 max-w-[14rem]">
-                              <span className="truncate" title={run.id}>
-                                {run.id}
-                              </span>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-7 w-7 shrink-0"
-                                onClick={() => {
-                                  navigator.clipboard.writeText(run.id).then(
-                                    () => notify.success("Run ID copied"),
-                                    () => notify.error("Copy failed")
-                                  );
-                                }}
-                                title="Copy Run ID"
-                                aria-label="Copy Run ID"
-                              >
-                                <Copy className="h-3.5 w-3.5" />
-                              </Button>
-                            </div>
-                          </td>
-                          <td className="py-3 px-2">{run.method_id}</td>
-                          <td className="py-3 px-2 text-muted-foreground">
-                            <span
-                              className="inline-block max-w-[16rem] truncate align-bottom"
-                              title={datasetLabel}
-                            >
-                              {datasetLabel}
+              <ResponsiveTable stackBelow="lg" labelPlacement="side">
+                <ResponsiveTableHeader
+                  columns={[
+                    "Run ID",
+                    "Method",
+                    "Dataset",
+                    "Status",
+                    "Duration",
+                    "Created",
+                    { label: "Action", className: "text-right" },
+                  ]}
+                />
+                <ResponsiveTableBody>
+                  {runs.map((run) => {
+                    const datasetLabel = formatDatasetLabel(run.dataset_name, run.dataset_files);
+                    const durationLabel = formatRunDuration(run.started_at, run.finished_at);
+                    return (
+                      <ResponsiveTableRow key={run.id}>
+                        <ResponsiveTableCell label="Run ID" className="font-mono text-xs">
+                          <div className="flex items-center gap-1 @4xl:max-w-[14rem]">
+                            <span className="min-w-0 break-all @4xl:truncate" title={run.id}>
+                              {run.id}
                             </span>
-                          </td>
-                          <td className="py-3 px-2">
-                            {statusBadge(run.status)}
-                            {run.progress != null && run.status === "RUNNING" && (
-                              <span className="ml-2 text-muted-foreground">
-                                {run.progress}%
-                              </span>
-                            )}
-                            {run.results_expired ? (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 shrink-0"
+                              onClick={() => {
+                                navigator.clipboard.writeText(run.id).then(
+                                  () => notify.success("Run ID copied"),
+                                  () => notify.error("Copy failed")
+                                );
+                              }}
+                              title="Copy Run ID"
+                              aria-label="Copy Run ID"
+                            >
+                              <Copy className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        </ResponsiveTableCell>
+                        <ResponsiveTableCell label="Method">{run.method_id}</ResponsiveTableCell>
+                        <ResponsiveTableCell label="Dataset" className="text-muted-foreground">
+                          <span
+                            className="@4xl:inline-block @4xl:max-w-[16rem] @4xl:truncate @4xl:align-bottom"
+                            title={datasetLabel}
+                          >
+                            {datasetLabel}
+                          </span>
+                        </ResponsiveTableCell>
+                        <ResponsiveTableCell label="Status">
+                          {statusBadge(run.status)}
+                          {run.progress != null && run.status === "RUNNING" && (
+                            <span className="ml-2 text-muted-foreground">
+                              {run.progress}%
+                            </span>
+                          )}
+                          {run.results_expired ? (
+                            <>
                               <span
                                 data-testid="run-results-expired"
                                 className="ml-2 inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground"
-                                title="The results of this run were removed at the end of the retention period. The run itself stays in your history."
+                                title={RESULTS_EXPIRED_REASON}
                               >
                                 Results expired
                               </span>
-                            ) : (
-                              run.status === "DONE" && retentionDate(run.expires_at) && (
-                                <span
-                                  data-testid="run-results-kept-until"
-                                  className="mt-1 block text-xs text-muted-foreground"
+                              <span className="mt-1 block text-xs text-muted-foreground pointer-fine:hidden">
+                                {RESULTS_EXPIRED_REASON}
+                              </span>
+                            </>
+                          ) : (
+                            run.status === "DONE" && retentionDate(run.expires_at) && (
+                              <span
+                                data-testid="run-results-kept-until"
+                                className="mt-1 block text-xs text-muted-foreground"
+                              >
+                                kept until {retentionDate(run.expires_at)}
+                              </span>
+                            )
+                          )}
+                        </ResponsiveTableCell>
+                        <ResponsiveTableCell label="Duration" className="text-muted-foreground">
+                          {durationLabel ?? "—"}
+                        </ResponsiveTableCell>
+                        <ResponsiveTableCell label="Created" className="text-muted-foreground">
+                          {formatDate(run.created_at)}
+                        </ResponsiveTableCell>
+                        <ResponsiveTableCell>
+                          <div className="flex flex-wrap items-center gap-2 pt-1 @4xl:flex-nowrap @4xl:justify-end @4xl:gap-1 @4xl:pt-0">
+                            <Link href={`/dashboard?runId=${run.id}`} className="flex-1 @4xl:flex-none">
+                              <Button variant="ghost" size="sm" className="w-full gap-1 border @4xl:w-auto @4xl:border-0">
+                                View details
+                                <ExternalLink className="h-3 w-3" />
+                              </Button>
+                            </Link>
+                            {run.status === "DONE" && !run.results_expired && (
+                              <Link
+                                href={`/dashboard/comparison?baseRunId=${encodeURIComponent(run.id)}`}
+                                className="flex-1 @4xl:flex-none"
+                              >
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="w-full gap-1 border @4xl:w-auto @4xl:border-0"
+                                  title="Open Sequence Trace with other runs on the same dataset"
                                 >
-                                  kept until {retentionDate(run.expires_at)}
-                                </span>
-                              )
-                            )}
-                          </td>
-                          <td className="py-3 px-2 text-muted-foreground">
-                            {durationLabel ?? "—"}
-                          </td>
-                          <td className="py-3 px-2 text-muted-foreground">
-                            {formatDate(run.created_at)}
-                          </td>
-                          <td className="py-3 px-2 text-right">
-                            <div className="flex items-center justify-end gap-1">
-                              <Link href={`/dashboard?runId=${run.id}`}>
-                                <Button variant="ghost" size="sm" className="gap-1">
-                                  View details
-                                  <ExternalLink className="h-3 w-3" />
+                                  <GitCompare className="h-3 w-3" />
+                                  Sequence Trace
                                 </Button>
                               </Link>
-                              {run.status === "DONE" && !run.results_expired && (
-                                <Link href={`/dashboard/comparison?baseRunId=${encodeURIComponent(run.id)}`}>
-                                  <Button variant="ghost" size="sm" className="gap-1" title="Open Sequence Trace with other runs on the same dataset">
-                                    <GitCompare className="h-3 w-3" />
-                                    Sequence Trace
-                                  </Button>
-                                </Link>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+                            )}
+                          </div>
+                        </ResponsiveTableCell>
+                      </ResponsiveTableRow>
+                    );
+                  })}
+                </ResponsiveTableBody>
+              </ResponsiveTable>
               {(hasPrev || hasMore) && (
                 <div className="flex items-center justify-between gap-4 pt-4 mt-4 border-t">
                   <Button

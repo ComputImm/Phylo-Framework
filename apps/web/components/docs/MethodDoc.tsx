@@ -3,13 +3,12 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+  ResponsiveTable,
+  ResponsiveTableBody,
+  ResponsiveTableCell,
+  ResponsiveTableHeader,
+  ResponsiveTableRow,
+} from "@/components/ui/responsive-table";
 import { getMethodContent } from "@/features/docs/content";
 import { getMethodDocModel } from "@/features/docs/loader";
 import type { MethodId } from "@/features/docs/types";
@@ -77,31 +76,27 @@ export function MethodDoc({ id }: { id: MethodId }) {
       {/* Input types */}
       <section className="space-y-4">
         <h2 className="text-xl font-semibold tracking-tight">Accepted input types</h2>
-        <div className="overflow-hidden rounded-lg border">
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-muted/50 hover:bg-muted/50">
-                <TableHead className="min-w-[8rem]">Input type</TableHead>
-                <TableHead>What the framework does with it</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
+        <ResponsiveTable stackBelow="sm" className="rounded-lg border">
+          <ResponsiveTableHeader
+            className="bg-muted/50 text-muted-foreground"
+            columns={[{ label: "Input type", className: "min-w-[8rem]" }, "What the framework does with it"]}
+          />
+          <ResponsiveTableBody>
               {content.inputTypes.map((row) => (
-                <TableRow key={row.type}>
-                  <TableCell className="font-medium text-foreground">{row.type}</TableCell>
-                  <TableCell className="text-muted-foreground">
+                <ResponsiveTableRow key={row.type} className="px-3">
+                  <ResponsiveTableCell className="font-medium text-foreground">{row.type}</ResponsiveTableCell>
+                  <ResponsiveTableCell className="text-muted-foreground">
                     {row.handling}
                     {row.needsVerification && (
                       <Badge variant="warning" className="ml-2 align-middle">
                         ⚠ NEEDS VERIFICATION
                       </Badge>
                     )}
-                  </TableCell>
-                </TableRow>
+                  </ResponsiveTableCell>
+                </ResponsiveTableRow>
               ))}
-            </TableBody>
-          </Table>
-        </div>
+          </ResponsiveTableBody>
+        </ResponsiveTable>
       </section>
 
       {/* ZIP bundle format */}
@@ -142,22 +137,25 @@ export function MethodDoc({ id }: { id: MethodId }) {
                 <code className="rounded bg-muted px-1 py-0.5">files</code> for that scenario.
               </p>
               <div className="overflow-hidden rounded-lg border">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-muted/50 hover:bg-muted/50">
-                      <TableHead className="min-w-[14rem]">Scenario</TableHead>
-                      <TableHead>Use it when</TableHead>
-                      <TableHead className="min-w-[16rem]">Mandatory files</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
+                <ResponsiveTable stackBelow="md">
+                  <ResponsiveTableHeader
+                    className="bg-muted/50 text-muted-foreground"
+                    columns={[
+                      { label: "Scenario", className: "min-w-[14rem]" },
+                      "Use it when",
+                      { label: "Mandatory files", className: "min-w-[16rem]" },
+                    ]}
+                  />
+                  <ResponsiveTableBody>
                     {content.zipBundle.scenarios.map((sc) => (
-                      <TableRow key={sc.scenario} className="align-top">
-                        <TableCell className="font-mono text-xs font-medium text-foreground">
+                      <ResponsiveTableRow key={sc.scenario} className="px-3">
+                        <ResponsiveTableCell className="font-mono text-xs font-medium text-foreground">
                           {sc.scenario}
-                        </TableCell>
-                        <TableCell className="text-muted-foreground">{sc.when}</TableCell>
-                        <TableCell className="text-muted-foreground">
+                        </ResponsiveTableCell>
+                        <ResponsiveTableCell label="Use it when" className="text-muted-foreground">
+                          {sc.when}
+                        </ResponsiveTableCell>
+                        <ResponsiveTableCell label="Mandatory files" className="text-muted-foreground">
                           <ul className="space-y-1.5">
                             {sc.required.map((r) => (
                               <li key={r.role}>
@@ -168,11 +166,11 @@ export function MethodDoc({ id }: { id: MethodId }) {
                               </li>
                             ))}
                           </ul>
-                        </TableCell>
-                      </TableRow>
+                        </ResponsiveTableCell>
+                      </ResponsiveTableRow>
                     ))}
-                  </TableBody>
-                </Table>
+                  </ResponsiveTableBody>
+                </ResponsiveTable>
               </div>
             </div>
 

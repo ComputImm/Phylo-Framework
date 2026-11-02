@@ -1,13 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, FolderCog } from "lucide-react";
 import FileInput from "@/components/common/FileInput";
 import { Button } from "@/components/ui/button";
 import { Loading } from "@/components/ui/loading";
 import { useFilesList } from "@/features/files/hooks";
-import { acceptAttr, isFileCompatible } from "@/lib/fileTypes";
+import { COARSE_POINTER, useMediaQuery } from "@/lib/hooks/useMediaQuery";
+import { acceptAttr, isFileCompatible, isPickedFileAcceptable } from "@/lib/fileTypes";
 import type { MethodSpec } from "@phylo/contracts";
 import type { ChosenInput } from "./types";
 
@@ -29,6 +30,10 @@ export default function DataStep({
   onBack: () => void;
 }) {
   const { data, isLoading, error } = useFilesList();
+  // Phone file pickers grey out extensions they don't know (.fasta, .rda), leaving the
+  // file unselectable, so touch devices skip the filter and rely on the check below.
+  const isCoarsePointer = useMediaQuery(COARSE_POINTER);
+  const [rejectedFileName, setRejectedFileName] = useState<string | null>(null);
 
   const uploadGuidance = Array.isArray(spec.uiHints?.uploadGuidance)
     ? (spec.uiHints?.uploadGuidance as string[])
@@ -95,12 +100,24 @@ export default function DataStep({
       <div className="rounded-2xl border-2 border-dashed bg-muted/30 p-6">
         <p className="mb-2 text-sm font-medium">Upload a new file</p>
         <FileInput
-          accept={acceptAttr(spec.accepts)}
+          accept={isCoarsePointer ? undefined : acceptAttr(spec.accepts)}
           multiple={false}
           onFiles={(files) => {
-            if (files.length > 0) onChoose({ kind: "upload", file: files[0] });
+            const file = files[0];
+            if (!file) return;
+            if (!isPickedFileAcceptable(file, spec.accepts)) {
+              setRejectedFileName(file.name);
+              return;
+            }
+            setRejectedFileName(null);
+            onChoose({ kind: "upload", file });
           }}
         />
+        {rejectedFileName && (
+          <p role="alert" className="mt-2 text-sm text-destructive">
+            {rejectedFileName} is not a file type this method accepts.
+          </p>
+        )}
         <p className="mt-2 text-xs text-muted-foreground">The file is uploaded when you start the run.</p>
       </div>
 

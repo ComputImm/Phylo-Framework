@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Check, ChevronsUpDown, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { useDismissOnOutside } from "@/lib/hooks/useDismissOnOutside";
 import { cn } from "@/lib/utils";
 
 export type RunAutocompleteOption = {
@@ -115,18 +116,7 @@ export default function RunAutocomplete({
     });
   }, [filteredOptions.length]);
 
-  useEffect(() => {
-    if (!open) return;
-    const onDocumentMouseDown = (event: MouseEvent) => {
-      const target = event.target;
-      if (!(target instanceof Node)) return;
-      if (!rootRef.current?.contains(target)) {
-        close();
-      }
-    };
-    document.addEventListener("mousedown", onDocumentMouseDown);
-    return () => document.removeEventListener("mousedown", onDocumentMouseDown);
-  }, [close, open]);
+  useDismissOnOutside(rootRef, close, open);
 
   const displayValue = open ? query : selectedOption ? formatRunLabel(selectedOption) : "";
 
@@ -194,9 +184,9 @@ export default function RunAutocomplete({
               input?.blur();
             }
           }}
-          className="w-full pr-14 font-mono text-sm"
+          className="w-full pr-14 font-mono pointer-coarse:pr-20"
         />
-        <div className="pointer-events-none absolute right-10 top-1/2 -translate-y-1/2 text-muted-foreground">
+        <div className="pointer-events-none absolute right-10 top-1/2 pointer-coarse:right-12 -translate-y-1/2 text-muted-foreground">
           <ChevronsUpDown className="h-4 w-4" />
         </div>
         {value && (
@@ -214,7 +204,7 @@ export default function RunAutocomplete({
       </div>
 
       {open && (
-        <div className="absolute z-50 mt-1 max-h-64 w-full overflow-auto rounded-md border bg-background p-1 shadow-lg">
+        <div className="z-50 mt-1 max-h-64 w-full overflow-auto md:absolute rounded-md border bg-background p-1 shadow-lg">
           {filteredOptions.length === 0 ? (
             <div className="px-2 py-1.5 text-sm text-muted-foreground">No runs found.</div>
           ) : (

@@ -25,8 +25,10 @@ export type TreeViewportProps = {
   lineageDownloadName: string;
   lineageNewick: string;
   collapseSignal?: CollapseSignal;
-  /** Height for the interactive tree pane (fullscreen expand passes e.g. "78vh"). */
+  /** Height for the interactive tree pane (fullscreen expand passes "100%"). */
   viewportHeight?: number | string;
+  /** Opens the fullscreen copy; see TreeView. The fullscreen copy itself leaves it out. */
+  onExplore?: () => void;
 };
 
 /** Renders the active tree view (method image / phylogeny / lineage), with its
@@ -51,6 +53,7 @@ export default function TreeViewport({
   lineageNewick,
   collapseSignal,
   viewportHeight,
+  onExplore,
 }: TreeViewportProps) {
   return (
     <>
@@ -89,6 +92,7 @@ export default function TreeViewport({
           displayNewick={current.displayNewick}
           collapseSignal={collapseSignal}
           height={viewportHeight}
+          onExplore={onExplore}
         />
       )}
       {activeTab === "phylogeny" && !current?.phylogenyNewick && current?.isLoading && (
@@ -117,6 +121,7 @@ export default function TreeViewport({
           displayNewick={current.displayNewick}
           collapseSignal={collapseSignal}
           height={viewportHeight}
+          onExplore={onExplore}
         />
       )}
       {activeTab === "lineage" && !current?.lineagePlot && current?.isLoading && (

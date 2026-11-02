@@ -1,8 +1,7 @@
 import type { ReactNode } from "react";
-import type { ZoomTransform } from "d3-zoom";
 import type { NodeVisual, EdgeVisual, GlyphVisual } from "@/components/phylo/tree/core";
 
-/** Semantic-zoom level of detail (Phase 3), driven by `transform.k`. */
+/** Semantic-zoom level of detail (Phase 3), driven by the zoom level. */
 export type LodLevel = "dots" | "nodes" | "full";
 
 export type TreeRenderProps = {
@@ -12,9 +11,9 @@ export type TreeRenderProps = {
   edges: readonly EdgeVisual[];
   /** Collapsed-subtree wedges. */
   glyphs: readonly GlyphVisual[];
-  /** Current zoom transform (applied by the parent to the wrapping `<g>`). */
-  transform: ZoomTransform;
-  /** Semantic-zoom level from `transform.k`. */
+  /** Zoom level, in the coarse steps of quantizeZoom so a pinch re-renders sparingly. */
+  zoomK: number;
+  /** Semantic-zoom level from the current zoom. */
   lod: LodLevel;
   /** Shared label-column geometry from the layout. */
   labelX: number;

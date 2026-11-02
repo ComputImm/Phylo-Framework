@@ -43,7 +43,7 @@ export default function ClonaltreeResults({ result }: { result: RunResult }) {
         : repRows[0]
           ? Object.keys(repRows[0])
           : []) ?? [];
-    return cols.map((c) => ({ key: c, header: c, className: "whitespace-nowrap px-3 py-2" }));
+    return cols.map((c) => ({ key: c, header: c, noWrap: true }));
   }, [repertoire?.columns, repRows]);
 
   const cloneColumns: DataColumn<CloneRow>[] = [

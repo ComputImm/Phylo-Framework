@@ -4,7 +4,7 @@ import { ChevronsDownUp, ChevronsUpDown } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import TreeOverlay from "./TreeOverlay";
+import Overlay from "@/components/common/Overlay";
 
 function ToggleRow({
   label,
@@ -67,7 +67,7 @@ export default function TreeSettingsPanel({
   onCollapseAll?: () => void;
 }) {
   return (
-    <TreeOverlay
+    <Overlay
       open={open}
       onClose={onClose}
       side="right"
@@ -171,11 +171,11 @@ export default function TreeSettingsPanel({
               </Button>
             </div>
             <p className="text-xs text-muted-foreground">
-              Right-click a node (or tap-hold on touch) to collapse or expand its subtree.
+              Right-click a node to collapse or expand its subtree. On touch, tap the node and choose Collapse subtree.
             </p>
           </div>
         )}
       </div>
-    </TreeOverlay>
+    </Overlay>
   );
 }

@@ -3,23 +3,23 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { FileStack, FolderOpen, GitCompare, Play, PanelLeftClose, PanelLeft } from "lucide-react";
+import { PanelLeftClose, PanelLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PhyloLogo } from "@/components/layout/PhyloLogo";
+import { DASHBOARD_NAV_ITEMS, isDashboardNavActive } from "@/components/dashboard/navigation";
+import { BELOW_LG, useMediaQuery } from "@/lib/hooks/useMediaQuery";
 import { useEffect, useState } from "react";
 
 const SIDEBAR_COLLAPSED_KEY = "phylo-sidebar-collapsed";
 
-const navItems = [
-  { href: "/dashboard", label: "Run model", icon: Play },
-  { href: "/dashboard/history", label: "Run history", icon: FileStack },
-  { href: "/dashboard/files", label: "File management", icon: FolderOpen },
-  { href: "/dashboard/comparison", label: "Sequence Trace", icon: GitCompare },
-];
-
+/** Tablet and desktop navigation; DashboardTabBar replaces it on phones. */
 export default function Sidebar() {
   const pathname = usePathname();
-  const [collapsed, setCollapsed] = useState(false);
+  const [userCollapsed, setCollapsed] = useState(false);
+  // Too little room for the full sidebar on a tablet, so it stays a rail there. The
+  // rail carries short labels because touch screens have no hover to reveal them.
+  const isRail = useMediaQuery(BELOW_LG);
+  const collapsed = userCollapsed || isRail;
 
   useEffect(() => {
     const raw = typeof window !== "undefined" ? localStorage.getItem(SIDEBAR_COLLAPSED_KEY) : null;
@@ -37,7 +37,7 @@ export default function Sidebar() {
   return (
     <aside
       className={cn(
-        "relative flex shrink-0 flex-col border-r bg-sidebar/80 transition-[width] duration-200 ease-in-out overflow-hidden",
+        "relative hidden shrink-0 flex-col border-r bg-sidebar/80 transition-[width] duration-200 ease-in-out overflow-hidden md:flex",
         collapsed ? "w-[4.25rem]" : "w-60",
       )}
     >
@@ -56,23 +56,25 @@ export default function Sidebar() {
         <PhyloLogo collapsed={collapsed} />
       </div>
 
-      <nav className="relative z-10 flex flex-1 flex-col gap-1.5 p-3 min-h-0">
+      <nav className="relative z-10 flex flex-1 flex-col gap-1.5 overflow-y-auto p-3 min-h-0">
         {!collapsed && (
           <p className="px-2 pb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/80">
             Workspace
           </p>
         )}
-        {navItems.map(({ href, label, icon: Icon }) => {
-          const isActive =
-            href === "/dashboard" ? pathname === "/dashboard" : pathname.startsWith(href);
+        {DASHBOARD_NAV_ITEMS.map(({ href, label, shortLabel, icon: Icon }) => {
+          const isActive = isDashboardNavActive(href, pathname);
           return (
             <Link
               key={href}
               href={href}
               title={collapsed ? label : undefined}
+              aria-label={label}
+              aria-current={isActive ? "page" : undefined}
               className={cn(
                 "group relative flex items-center gap-3 rounded-xl py-2.5 text-sm font-medium transition-all min-w-0",
                 collapsed ? "justify-center px-2" : "px-3",
+                isRail && "flex-col gap-1",
                 isActive
                   ? "bg-primary/12 text-primary shadow-sm"
                   : "text-muted-foreground hover:bg-sidebar-accent/80 hover:text-foreground",
@@ -92,24 +94,27 @@ export default function Sidebar() {
                 <Icon className="h-4 w-4" />
               </span>
               {!collapsed && <span className="truncate">{label}</span>}
+              {isRail && <span className="text-[10px] leading-none">{shortLabel}</span>}
             </Link>
           );
         })}
       </nav>
 
-      <div className="relative z-10 border-t border-sidebar-border/80 p-3">
-        <Button
-          variant="ghost"
-          size={collapsed ? "icon" : "sm"}
-          onClick={toggle}
-          className={cn("w-full text-muted-foreground hover:text-foreground", !collapsed && "justify-start gap-2")}
-          title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-        >
-          {collapsed ? <PanelLeft className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
-          {!collapsed && <span className="text-sm">Collapse</span>}
-        </Button>
-      </div>
+      {!isRail && (
+        <div className="relative z-10 border-t border-sidebar-border/80 p-3">
+          <Button
+            variant="ghost"
+            size={collapsed ? "icon" : "sm"}
+            onClick={toggle}
+            className={cn("w-full text-muted-foreground hover:text-foreground", !collapsed && "justify-start gap-2")}
+            title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          >
+            {collapsed ? <PanelLeft className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
+            {!collapsed && <span className="text-sm">Collapse</span>}
+          </Button>
+        </div>
+      )}
     </aside>
   );
 }

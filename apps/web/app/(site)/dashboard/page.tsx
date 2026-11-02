@@ -597,6 +597,7 @@ function LiveDashboard({ onViewResults }: { onViewResults: (runId: string) => vo
               <Plus className="h-4 w-4" />
               Add run
             </Button>
+            {!canAdd && <p className="text-xs text-muted-foreground">You can queue at most {maxQueued} runs.</p>}
           </div>
         ) : (
           <Card className="p-4 space-y-4">

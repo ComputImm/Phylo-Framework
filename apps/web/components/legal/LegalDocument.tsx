@@ -2,6 +2,13 @@ import Link from "next/link";
 import { Check } from "lucide-react";
 import { SiteFooter } from "@/components/layout/SiteFooter";
 import { LegalToc } from "@/components/legal/LegalToc";
+import {
+  ResponsiveTable,
+  ResponsiveTableBody,
+  ResponsiveTableCell,
+  ResponsiveTableHeader,
+  ResponsiveTableRow,
+} from "@/components/ui/responsive-table";
 import { LEGAL } from "@/lib/legal";
 import { cn } from "@/lib/utils";
 
@@ -123,42 +130,32 @@ export function LegalTable({
   rows: React.ReactNode[][];
 }) {
   return (
-    <div className="overflow-hidden rounded-xl border bg-card">
-      <table className="block w-full text-left text-sm leading-6 sm:table">
-        <caption className="sr-only">{caption}</caption>
-        <thead className="hidden bg-muted/60 sm:table-header-group">
-          <tr>
-            {columns.map((column) => (
-              <th key={column} scope="col" className="px-4 py-2.5 font-semibold text-foreground">
-                {column}
-              </th>
+    <ResponsiveTable
+      stackBelow="sm"
+      caption={caption}
+      className="overflow-hidden rounded-xl border bg-card"
+      tableClassName="text-left leading-6"
+    >
+      <ResponsiveTableHeader
+        className="border-b-0 bg-muted/60"
+        columns={columns.map((column) => ({ label: column, className: "px-4 font-semibold text-foreground" }))}
+      />
+      <ResponsiveTableBody>
+        {rows.map((row, rowIndex) => (
+          <ResponsiveTableRow key={rowIndex} className="p-4 @xl:p-0">
+            {row.map((cell, cellIndex) => (
+              <ResponsiveTableCell
+                key={cellIndex}
+                label={cellIndex > 0 ? columns[cellIndex] : undefined}
+                className={cn("@xl:border-t @xl:px-4", cellIndex === 0 && "font-medium text-foreground")}
+              >
+                {cell}
+              </ResponsiveTableCell>
             ))}
-          </tr>
-        </thead>
-        <tbody className="block divide-y sm:table-row-group">
-          {rows.map((row, rowIndex) => (
-            <tr key={rowIndex} className="block p-4 sm:table-row sm:p-0">
-              {row.map((cell, cellIndex) => (
-                <td
-                  key={cellIndex}
-                  className={cn(
-                    "block py-1 align-top sm:table-cell sm:border-t sm:px-4 sm:py-3",
-                    cellIndex === 0 && "font-medium text-foreground",
-                  )}
-                >
-                  {cellIndex > 0 && (
-                    <span className="block text-xs font-medium text-muted-foreground sm:hidden">
-                      {columns[cellIndex]}
-                    </span>
-                  )}
-                  {cell}
-                </td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+          </ResponsiveTableRow>
+        ))}
+      </ResponsiveTableBody>
+    </ResponsiveTable>
   );
 }
 

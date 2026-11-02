@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { Check, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { computeNodes, type RenderNode } from "./runStageNodes";
@@ -56,16 +56,32 @@ export default function RunStageFlowchart({
   stageMessage?: string | null;
 }) {
   const nodes = useMemo(() => computeNodes(methodId, status, stage), [methodId, status, stage]);
+  const activeIndex = nodes.findIndex((node) => node.state === "active");
+  const listRef = useRef<HTMLOListElement>(null);
+
+  // Where the row scrolls sideways, keep the running stage in view. Sets scrollLeft
+  // rather than using scrollIntoView, which would also move the page under the user.
+  useEffect(() => {
+    const list = listRef.current;
+    const active = list?.children[activeIndex];
+    if (list && active instanceof HTMLElement) {
+      list.scrollLeft = active.offsetLeft - list.offsetLeft - list.clientWidth / 2;
+    }
+  }, [activeIndex]);
 
   return (
     <div className="space-y-2">
       <span className="text-xs font-medium text-muted-foreground">Pipeline</span>
       <div className="flex justify-center">
-        <ol className="flex flex-wrap items-start justify-center gap-y-3">
+        {/* Scrolls sideways on phones: wrapping would leave connectors dangling at row ends. */}
+        <ol
+          ref={listRef}
+          className="relative flex min-w-0 items-start gap-y-3 overflow-x-auto pb-1 sm:flex-wrap sm:justify-center sm:overflow-visible sm:pb-0"
+        >
         {nodes.map((node, i) => {
           const isLast = i === nodes.length - 1;
           return (
-            <li key={`${node.id}-${i}`} className="flex items-start">
+            <li key={`${node.id}-${i}`} className="flex shrink-0 items-start">
               <div className="flex w-[84px] flex-col items-center gap-1 text-center">
                 <span className="relative flex size-7 items-center justify-center">
                   {node.state === "active" && <MarchingRing />}

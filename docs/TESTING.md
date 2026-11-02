@@ -141,6 +141,7 @@ percentages use different instrumentation denominators; compare like with like.
 | Documentation | Every relative link, every `npm run` and `./run.sh` command, every script path and every setting named in the documentation exists; the configuration reference and `.env.example` cover the same settings |
 | System under pressure | `npm run test:system`: see [VALIDATION.md](./VALIDATION.md) |
 | Browser E2E | Protected navigation, signup/login/reload, actual dataset deletion, each method's documented example, and zero-abundance persistence through API and node details |
+| Browser layout | `responsive.spec.ts`, on phone, tablet and desktop against a mock API: nothing out of reach on any page, touch-sized controls, navigation, table forms, tree gestures, Sequence Trace paging and the run wizard. Needs no backend: `npx playwright test tests/browser/responsive.spec.ts` |
 
 The initial audit found that `npm test` ran only TS suites, 13 PostgreSQL tests
 were silently skipped, no CI/coverage/browser harness existed, and the R suites
@@ -177,7 +178,7 @@ scientific suite covers a documented single-clone scenario with fixed parameters
 not every stochastic seed, external tree builder, DTA/time-evolution combination,
 or large-data performance limit. Upstream algorithm internals are not tested here.
 Google and email boundaries are simulated; no real accounts or mail are used.
-The browser suite currently covers Chromium, not Firefox/WebKit/mobile. Remaining
+The browser suite runs on Chromium, with phone and tablet emulation for layout, not Firefox, WebKit or real devices. Remaining
 uncovered branches and UI flows stay visible in the reports.
 
 ## Earlier verified run (2026-10-05, historical)

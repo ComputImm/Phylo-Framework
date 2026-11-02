@@ -1,26 +1,29 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
 import type { LineagePlot, TreeNodeAttrs } from "@phylo/contracts";
-import { ZoomIn, ZoomOut, Maximize } from "lucide-react";
+import { Maximize, Maximize2, ZoomIn, ZoomOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import NodeDetailModal, { type NodeDetail } from "@/components/phylo/tree/NodeDetailModal";
+import NodeDetailModal from "@/components/phylo/tree/NodeDetailModal";
 import DownloadMenu from "@/components/phylo/tree/DownloadMenu";
 import TreeSkeleton from "@/components/phylo/tree/TreeSkeleton";
 import TreeLegend from "@/components/phylo/tree/TreeLegend";
 import SvgTreeRenderer from "@/components/phylo/tree/renderers/SvgTreeRenderer";
 import { useContainerSize } from "@/components/phylo/tree/hooks/useContainerSize";
 import { useZoomPan } from "@/components/phylo/tree/hooks/useZoomPan";
+import { COARSE_POINTER, PHONE_SIZED, useMediaQuery } from "@/lib/hooks/useMediaQuery";
+import { notify } from "@/lib/notify";
+import { cn } from "@/lib/utils";
 import {
   fromLineagePlot,
   fromNewick,
   layoutTree,
+  narrowPanePlotWidth,
   buildColorScale,
-  buildRows,
+  buildTreeVisuals,
+  nearestNodeId,
   resolveNodeDisplayLabel,
-  buildTipRows,
   resolveTipDisplayLabel,
-  truncateLabel,
   serializeTreeSvg,
   downloadSvg,
   downloadPng,
@@ -30,16 +33,14 @@ import {
   collapseAll,
   expandAll,
   toggleCollapse,
-  subtreeColorSummary,
   computeTrace,
   deriveTraceCollapsed,
   computeMatchIds,
   LOD_DETAIL_K,
-  type NodeVisual,
-  type EdgeVisual,
-  type GlyphVisual,
+  quantizeZoom,
   type PhyloAnnotation,
   type ColorScale,
+  type TreeNodeModel,
 } from "@/components/phylo/tree/core";
 
 export type TreeSource =
@@ -77,13 +78,15 @@ export type TreeViewProps = {
   displayNewick?: string | null;
   height?: number | string;
   isLoading?: boolean;
+  /** Opens a full-screen copy of this tree. When given, phones show a touch-scrollable preview. */
+  onExplore?: () => void;
   className?: string;
 };
 
 const DEFAULT_HEIGHT = 520;
-const PHYLO_INTERNAL_RADIUS = 2.5;
-const PHYLO_INTERNAL_HIT_RADIUS = 4; // invisible click target when internals hidden
-const PHYLO_INTERNAL_FILL = "transparent";
+const PREVIEW_HEIGHT = "min(60dvh, 420px)";
+const TOUCH_REACH = 24; // screen px
+const COMPACT_LEGEND_WIDTH = 480; // px; below this an open legend would cover the tree
 
 export default function TreeView({
   source,
@@ -106,9 +109,10 @@ export default function TreeView({
   displayNewick,
   height,
   isLoading = false,
+  onExplore,
   className,
 }: TreeViewProps) {
-  const [selectedNode, setSelectedNode] = useState<NodeDetail | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [highlightColor, setHighlightColor] = useState<string | null>(null);
 
   // Stable primitives for memo deps (caller passes a fresh `source` object each render).
@@ -145,11 +149,14 @@ export default function TreeView({
     setCollapsed(collapseSignal.type === "collapseAll" ? collapseAll(model) : expandAll());
   }, [collapseSignal, model]);
 
-  const toggle = (id: string) => {
-    const node = model.nodes.get(id);
-    if (!node || node.childIds.length === 0) return; // leaves never collapse
-    setCollapsed((prev) => toggleCollapse(prev, id));
-  };
+  const toggle = useCallback(
+    (id: string) => {
+      const node = model.nodes.get(id);
+      if (!node || node.childIds.length === 0) return; // leaves never collapse
+      setCollapsed((prev) => toggleCollapse(prev, id));
+    },
+    [model],
+  );
 
   // Colour scale — one encoding for BOTH views (abundance / categorical / continuous).
   const colorScale = useMemo(
@@ -201,192 +208,106 @@ export default function TreeView({
     return s;
   }, [trace]);
 
-  const layout = useMemo(
-    () =>
-      layoutTree(model, {
-        collapsed: effectiveCollapsed,
-        showLabels,
-        // Phylogeny internals never get right-column text labels (they get a
-        // hollow ring + optional "#n"), so keep them out of the label geometry.
-        showInternalNodes: isLineage ? showInternalNodes : false,
-        displayLabelOf: isLineage
-          ? (n) => resolveNodeDisplayLabel(n, displayIdField, showInternalNodes, showNodeNumbers)
-          : (n) => resolveTipDisplayLabel(n.label, n.attrs, displayIdField ?? null),
-      }),
-    [model, effectiveCollapsed, isLineage, showLabels, showInternalNodes, showNodeNumbers, displayIdField],
+  const layoutOptions = useMemo(
+    () => ({
+      collapsed: effectiveCollapsed,
+      showLabels,
+      // Phylogeny internals never get right-column text labels (they get a
+      // hollow ring + optional "#n"), so keep them out of the label geometry.
+      showInternalNodes: isLineage ? showInternalNodes : false,
+      displayLabelOf: isLineage
+        ? (n: TreeNodeModel) => resolveNodeDisplayLabel(n, displayIdField, showInternalNodes, showNodeNumbers)
+        : (n: TreeNodeModel) => resolveTipDisplayLabel(n.label, n.attrs, displayIdField ?? null),
+    }),
+    [effectiveCollapsed, isLineage, showLabels, showInternalNodes, showNodeNumbers, displayIdField],
   );
 
-  // Build the shared, layout-derived visuals once. SvgTreeRenderer AND the export
-  // serialiser both consume these arrays (one source of truth for "what to draw").
-  const { visuals, edges, glyphs, detailById, focusBounds } = useMemo(() => {
-    const out: NodeVisual[] = [];
-    const glyphOut: GlyphVisual[] = [];
-    const details = new Map<string, NodeDetail>();
-    let internalCount = 0;
-    // bbox of the in-focus set (for "Show me" → fitToView).
-    let minX = Infinity;
-    let minY = Infinity;
-    let maxX = -Infinity;
-    let maxY = -Infinity;
-    const grow = (x0: number, y0: number, x1: number, y1: number) => {
-      if (x0 < minX) minX = x0;
-      if (y0 < minY) minY = y0;
-      if (x1 > maxX) maxX = x1;
-      if (y1 > maxY) maxY = y1;
-    };
-    const inFocus = (id: string) => focusIds == null || focusIds.has(id);
+  const { ref: containerRef, size } = useContainerSize<HTMLDivElement>();
+  // Narrow panes lay out to their own width so labels stay readable at fit zoom.
+  const targetWidth = narrowPanePlotWidth(size.width);
+  const layout = useMemo(
+    () => layoutTree(model, { ...layoutOptions, targetWidth }),
+    [model, layoutOptions, targetWidth],
+  );
 
-    for (const ln of layout.nodes) {
-      const label = ln.node.label;
-      const anno = ln.node.attrs;
-      const faded = focusIds != null && !focusIds.has(ln.id);
+  const visualOptions = useMemo(
+    () => ({
+      isLineage,
+      matchIds,
+      focusIds,
+      trace,
+      displayIdField,
+      showLabels,
+      showInternalNodes,
+      showNodeNumbers,
+      colorScale,
+      highlightColor,
+    }),
+    [
+      isLineage,
+      matchIds,
+      focusIds,
+      trace,
+      displayIdField,
+      showLabels,
+      showInternalNodes,
+      showNodeNumbers,
+      colorScale,
+      highlightColor,
+    ],
+  );
+  const { visuals, edges, glyphs, detailById, focusBounds } = useMemo(
+    () => buildTreeVisuals(layout, model, visualOptions),
+    [layout, model, visualOptions],
+  );
 
-      // Collapsed subtree → a wedge glyph (expand on click), no circle.
-      if (ln.isCollapsed) {
-        const summary = subtreeColorSummary(model, ln.id, (node) => {
-          const c = colorScale.colorFor(node);
-          return { key: c, color: c };
-        });
-        const farX = ln.glyphFarXPixel ?? ln.xPixel;
-        const hh = ln.glyphHalfHeight ?? 0;
-        glyphOut.push({
-          id: ln.id,
-          apexX: ln.xPixel,
-          y: ln.y,
-          farX,
-          halfHeight: hh,
-          fill: summary ? summary.modalColor : colorScale.colorFor(ln.node),
-          striped: summary ? summary.multiple : false,
-          isMatch: false,
-          faded,
-          labelText: showLabels
-            ? `n=${ln.node.subtreeLeafCount} · Σ=${ln.node.subtreeAbundanceSum ?? "unknown"}`
-            : null,
-        });
-        if (inFocus(ln.id)) grow(ln.xPixel, ln.y - hh, farX, ln.y + hh);
-        continue;
-      }
+  // Exports always use the default width, so a figure saved on a phone matches one
+  // saved on a desktop.
+  const buildExport = () => {
+    const full = layoutTree(model, layoutOptions);
+    const exported = buildTreeVisuals(full, model, visualOptions);
+    const markup = serializeTreeSvg(
+      exported.visuals,
+      exported.edges,
+      { width: full.width, height: full.height, labelX: full.labelX, connectorX: full.connectorX, strokeWidth: 1 },
+      exported.glyphs,
+    );
+    return { markup, width: full.width, height: full.height };
+  };
 
-      const isMatch = matchIds.has(ln.id);
-      if (inFocus(ln.id)) {
-        grow(ln.xPixel - ln.radius, ln.y - ln.radius, ln.xPixel + ln.radius, ln.y + ln.radius);
-      }
-
-      if (isLineage) {
-        const fill = colorScale.colorFor(ln.node);
-        out.push({
-          id: ln.id,
-          abundance: ln.node.abundance,
-          cx: ln.xPixel,
-          cy: ln.y,
-          r: ln.radius,
-          fill,
-          stroke: "#111827",
-          strokeWidth: 1.1,
-          hollow: false,
-          isMatch,
-          ringed: highlightColor != null && fill === highlightColor,
-          isCollapsible: ln.node.childIds.length > 0,
-          faded,
-          labelShown: ln.labelShown,
-          labelText: truncateLabel(ln.displayLabel, layout.maxLabelChars),
-          numberText: null,
-        });
-        details.set(ln.id, { title: ln.displayLabel || label || ln.id, rows: buildRows(ln.node) });
-        continue;
-      }
-
-      // Phylogeny
-      if (ln.isLeaf) {
-        const fill = colorScale.colorFor(ln.node);
-        const displayLabel = resolveTipDisplayLabel(label, anno, displayIdField ?? null);
-        out.push({
-          id: ln.id,
-          abundance: ln.node.abundance,
-          cx: ln.xPixel,
-          cy: ln.y,
-          r: ln.radius,
-          fill,
-          stroke: null,
-          strokeWidth: 0,
-          hollow: false,
-          isMatch,
-          ringed: highlightColor != null && fill === highlightColor,
-          isCollapsible: false,
-          faded,
-          labelShown: showLabels,
-          labelText: truncateLabel(displayLabel, layout.maxLabelChars),
-          numberText: null,
-        });
-        details.set(ln.id, buildTipRows(label, anno, displayIdField ?? null));
-      } else {
-        // Internal node. When internals are shown: hollow ring + optional number.
-        // When hidden: an invisible hit target so the branch point stays
-        // collapsible (a chevron marks it at full zoom).
-        internalCount += 1;
-        out.push({
-          id: ln.id,
-          abundance: ln.node.abundance,
-          cx: ln.xPixel,
-          cy: ln.y,
-          r: showInternalNodes ? PHYLO_INTERNAL_RADIUS : PHYLO_INTERNAL_HIT_RADIUS,
-          fill: showInternalNodes ? "none" : PHYLO_INTERNAL_FILL,
-          stroke: showInternalNodes ? "currentColor" : null,
-          strokeWidth: showInternalNodes ? 1.2 : 0,
-          hollow: showInternalNodes,
-          isMatch: false,
-          ringed: false,
-          isCollapsible: ln.node.childIds.length > 0,
-          faded,
-          labelShown: false,
-          labelText: "",
-          numberText: showInternalNodes && showNodeNumbers ? `#${internalCount}` : null,
-        });
-        details.set(ln.id, buildTipRows(label, anno, displayIdField ?? null));
-      }
-    }
-
-    const edgeVisuals: EdgeVisual[] = layout.edges.map((e) => ({
-      key: e.key,
-      d: `M ${e.sx} ${e.sy} L ${e.sx} ${e.ty} L ${e.tx} ${e.ty}`,
-      onPath: trace != null && trace.pathIds.has(e.sourceId) && trace.pathIds.has(e.targetId),
-      faded: focusIds != null && !(focusIds.has(e.sourceId) && focusIds.has(e.targetId)),
-    }));
-
-    const bounds =
-      focusIds && Number.isFinite(minX)
-        ? { x: minX, y: minY, width: Math.max(1, maxX - minX), height: Math.max(1, maxY - minY) }
-        : null;
-
-    return { visuals: out, edges: edgeVisuals, glyphs: glyphOut, detailById: details, focusBounds: bounds };
-  }, [
-    layout,
-    model,
-    isLineage,
-    matchIds,
-    focusIds,
-    trace,
-    displayIdField,
-    showLabels,
-    showInternalNodes,
-    showNodeNumbers,
-    colorScale,
-    highlightColor,
-  ]);
+  // On phones an inline tree lets touches scroll the page, and "Explore" opens the
+  // full-screen copy that takes every gesture.
+  const isPhone = useMediaQuery(PHONE_SIZED);
+  const isPreview = isPhone && !!onExplore;
+  const isCoarsePointer = useMediaQuery(COARSE_POINTER);
 
   // Zoom / pan. The svg is held as state (via a callback ref) so the zoom
   // behaviour attaches reliably even when the pane mounts after a skeleton.
-  const { ref: containerRef, size } = useContainerSize<HTMLDivElement>();
   const [svgEl, setSvgEl] = useState<SVGSVGElement | null>(null);
+  // Re-fit when the tree changes or the pane changes layout width (not on
+  // display/collapse toggles).
+  const fitKey = useMemo(() => ({ model, targetWidth }), [model, targetWidth]);
   const zoomApi = useZoomPan({
     svgEl,
     contentWidth: layout.width,
     contentHeight: layout.height,
     containerWidth: size.width,
     containerHeight: size.height,
-    // Re-fit only when the underlying tree changes (not on display/collapse toggles).
-    fitKey: model,
+    fitKey,
+    touchGestures: !isPreview,
+    readableInitialFit: isPhone && !isPreview,
   });
+
+  // A tap that misses every node opens the nearest one within a fingertip's reach.
+  const onTreeTap = (event: MouseEvent<SVGSVGElement>) => {
+    if (!isCoarsePointer || (event.target as Element).closest('[role="button"]')) return;
+    const box = event.currentTarget.getBoundingClientRect();
+    const [x, y] = zoomApi.transform.invert([event.clientX - box.left, event.clientY - box.top]);
+    const id = nearestNodeId(visuals, x, y, TOUCH_REACH / zoomApi.transform.k);
+    if (id) setSelectedId(id);
+  };
+
+  const selectedDetail = selectedId ? (detailById.get(selectedId) ?? null) : null;
 
   // Two tiers: a compact "dots" overview only at extreme zoom-out, else "full".
   const k = zoomApi.transform.k || 1;
@@ -403,13 +324,6 @@ export default function TreeView({
     fitToView(fb, true);
   }, [focusSignal]);
 
-  const meta = {
-    width: layout.width,
-    height: layout.height,
-    labelX: layout.labelX,
-    connectorX: layout.connectorX,
-    strokeWidth: 1,
-  };
   const newickForExport = newickText ?? (isLineage ? (lineagePlot?.meta?.normalizedNewick ?? "") : newick);
   const newickDownloads = newickExportEntries({
     filename,
@@ -417,13 +331,15 @@ export default function TreeView({
     displayNewick,
   });
 
-  if (isLoading) return <TreeSkeleton height={height} />;
+  const paneHeight = isPreview ? PREVIEW_HEIGHT : (height ?? DEFAULT_HEIGHT);
+
+  if (isLoading) return <TreeSkeleton height={paneHeight} />;
 
   if (!visuals.length && !glyphs.length) {
     return (
       <div
         className="flex items-center justify-center rounded border bg-background p-6 text-sm text-muted-foreground"
-        style={{ height: height ?? DEFAULT_HEIGHT }}
+        style={{ height: paneHeight }}
       >
         {layout.warnings[0]?.message ?? "No renderable tree data."}
       </div>
@@ -433,22 +349,30 @@ export default function TreeView({
   return (
     <div
       ref={containerRef}
-      className={`relative w-full overflow-hidden rounded border bg-background text-foreground ${className ?? ""}`}
-      style={{ height: height ?? DEFAULT_HEIGHT }}
+      className={`@container relative w-full overflow-hidden rounded border bg-background text-foreground ${className ?? ""}`}
+      style={{ height: paneHeight }}
     >
-      <svg ref={setSvgEl} className="absolute inset-0 h-full w-full touch-none select-none" role="img">
+      <svg
+        ref={setSvgEl}
+        className={cn(
+          "absolute inset-0 h-full w-full select-none [-webkit-touch-callout:none]",
+          isPreview ? "touch-manipulation" : "touch-none",
+        )}
+        role="img"
+        onClick={onTreeTap}
+      >
         <g transform={zoomApi.transform.toString()}>
           <SvgTreeRenderer
             nodes={visuals}
             edges={edges}
             glyphs={glyphs}
-            transform={zoomApi.transform}
+            zoomK={quantizeZoom(k)}
             lod={lod}
             labelX={layout.labelX}
             connectorX={layout.connectorX}
             highlightText={highlightText ?? null}
             markMatches={markMatches}
-            onNodeClick={(id) => setSelectedNode(detailById.get(id) ?? null)}
+            onNodeClick={setSelectedId}
             onToggleCollapse={toggle}
           />
         </g>
@@ -457,6 +381,7 @@ export default function TreeView({
       {/* Legend (top-left) */}
       <TreeLegend
         scale={colorScale}
+        compact={size.width > 0 && size.width < COMPACT_LEGEND_WIDTH}
         activeColor={highlightColor}
         onToggle={(color) => setHighlightColor((prev) => (prev === color ? null : color))}
       />
@@ -468,18 +393,17 @@ export default function TreeView({
             {
               label: "PNG image",
               description: "Raster image of the whole tree",
-              onSelect: () =>
-                downloadPng(
-                  serializeTreeSvg(visuals, edges, meta, glyphs),
-                  meta.width,
-                  meta.height,
-                  `${filename}.png`,
-                ),
+              onSelect: () => {
+                const { markup, width, height: exportHeight } = buildExport();
+                downloadPng(markup, width, exportHeight, `${filename}.png`, () =>
+                  notify.error("This device could not create the PNG. Try the SVG image instead."),
+                );
+              },
             },
             {
               label: "SVG image",
               description: "Scalable vector graphic",
-              onSelect: () => downloadSvg(serializeTreeSvg(visuals, edges, meta, glyphs), `${filename}.svg`),
+              onSelect: () => downloadSvg(buildExport().markup, `${filename}.svg`),
             },
             ...newickDownloads.map((entry) => ({
               label: entry.label,
@@ -491,26 +415,44 @@ export default function TreeView({
         />
       </div>
 
-      {/* Zoom controls (bottom-right) */}
-      <div className="absolute bottom-3 right-3 flex flex-col gap-1.5">
-        <Button type="button" variant="outline" size="icon" onClick={zoomApi.zoomIn} aria-label="Zoom in">
-          <ZoomIn className="size-4" />
+      {/* Zoom controls, or the way into them on a phone (bottom-right) */}
+      {isPreview ? (
+        <Button type="button" size="sm" className="absolute bottom-3 right-3 gap-1.5 shadow-md" onClick={onExplore}>
+          <Maximize2 className="size-4" />
+          Explore
         </Button>
-        <Button type="button" variant="outline" size="icon" onClick={zoomApi.zoomOut} aria-label="Zoom out">
-          <ZoomOut className="size-4" />
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          size="icon"
-          onClick={() => zoomApi.fitToView(undefined, true)}
-          aria-label="Fit to view"
-        >
-          <Maximize className="size-4" />
-        </Button>
-      </div>
+      ) : (
+        <div className="absolute bottom-3 right-3 flex flex-col gap-1.5">
+          <Button type="button" variant="outline" size="icon" onClick={zoomApi.zoomIn} aria-label="Zoom in">
+            <ZoomIn className="size-4" />
+          </Button>
+          <Button type="button" variant="outline" size="icon" onClick={zoomApi.zoomOut} aria-label="Zoom out">
+            <ZoomOut className="size-4" />
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            onClick={() => zoomApi.fitToView(undefined, true)}
+            aria-label="Fit to view"
+          >
+            <Maximize className="size-4" />
+          </Button>
+        </div>
+      )}
 
-      <NodeDetailModal detail={selectedNode} onClose={() => setSelectedNode(null)} />
+      <NodeDetailModal
+        detail={selectedDetail}
+        onClose={() => setSelectedId(null)}
+        onCollapse={
+          selectedId && model.nodes.get(selectedId)?.childIds.length
+            ? () => {
+                toggle(selectedId);
+                setSelectedId(null);
+              }
+            : undefined
+        }
+      />
     </div>
   );
 }

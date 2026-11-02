@@ -18,6 +18,7 @@ export const test = base.extend<{coverage: void}>({
       });
     });
     await use();
+    if (testInfo.status === 'skipped') return; // never opened a page, so there is nothing to measure
     const data = await page.evaluate(() => (window as any).__coverage__);
     expect(data, 'browser instrumentation must produce coverage').toBeTruthy();
     fs.writeFileSync(path.join(directory, `${testInfo.testId.replace(/[^\w-]/g, '_')}-final.json`), JSON.stringify(data));

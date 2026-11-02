@@ -10,6 +10,13 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import {
+  ResponsiveTable,
+  ResponsiveTableBody,
+  ResponsiveTableCell,
+  ResponsiveTableHeader,
+  ResponsiveTableRow,
+} from "@/components/ui/responsive-table";
 import { useDeleteFile, useFilesList } from "@/features/files/hooks";
 import { notify } from "@/lib/notify";
 import { Trash2 } from "lucide-react";
@@ -106,54 +113,54 @@ export default function FileManagementPage() {
             </p>
           )}
           {!isLoading && !error && files.length > 0 && (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b">
-                    <th className="text-left py-3 px-2 font-medium">Name</th>
-                    <th className="text-left py-3 px-2 font-medium">Size</th>
-                    <th className="text-left py-3 px-2 font-medium">Uploaded</th>
-                    <th className="text-left py-3 px-2 font-medium">Run ID</th>
-                    <th className="text-right py-3 px-2 font-medium w-24">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {files.map((file) => (
-                    <tr key={file.id} className="border-b last:border-0">
-                      <td className="py-3 px-2 font-medium truncate max-w-[12rem]">
+            <ResponsiveTable stackBelow="sm" labelPlacement="side">
+              <ResponsiveTableHeader
+                columns={[
+                  "Name",
+                  "Size",
+                  "Uploaded",
+                  "Run ID",
+                  { label: "Actions", className: "w-24 text-right" },
+                ]}
+              />
+              <ResponsiveTableBody>
+                {files.map((file) => (
+                  <ResponsiveTableRow key={file.id}>
+                    <ResponsiveTableCell label="Name" className="font-medium">
+                      <span className="block @xl:max-w-[12rem] @xl:truncate" title={file.original_filename}>
                         {file.original_filename}
-                      </td>
-                      <td className="py-3 px-2 text-muted-foreground">
-                        {formatSize(file.file_size)}
-                      </td>
-                      <td className="py-3 px-2 text-muted-foreground">
-                        {formatDate(file.uploaded_at)}
-                      </td>
-                      <td className="py-3 px-2 font-mono text-xs truncate max-w-[8rem]">
-                        {file.run_id ?? "—"}
-                      </td>
-                      <td className="py-3 px-2 text-right">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="text-destructive hover:text-destructive"
-                          onClick={() =>
-                            setPendingDelete({
-                              id: file.id,
-                              name: file.original_filename,
-                            })
-                          }
-                          disabled={deleteFile.isPending}
-                          aria-label={`Delete ${file.original_filename}`}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                      </span>
+                    </ResponsiveTableCell>
+                    <ResponsiveTableCell label="Size" className="text-muted-foreground">
+                      {formatSize(file.file_size)}
+                    </ResponsiveTableCell>
+                    <ResponsiveTableCell label="Uploaded" className="text-muted-foreground">
+                      {formatDate(file.uploaded_at)}
+                    </ResponsiveTableCell>
+                    <ResponsiveTableCell label="Run ID" className="font-mono text-xs">
+                      <span className="block @xl:max-w-[8rem] @xl:truncate">{file.run_id ?? "—"}</span>
+                    </ResponsiveTableCell>
+                    <ResponsiveTableCell className="text-right">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-destructive hover:text-destructive"
+                        onClick={() =>
+                          setPendingDelete({
+                            id: file.id,
+                            name: file.original_filename,
+                          })
+                        }
+                        disabled={deleteFile.isPending}
+                        aria-label={`Delete ${file.original_filename}`}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </ResponsiveTableCell>
+                  </ResponsiveTableRow>
+                ))}
+              </ResponsiveTableBody>
+            </ResponsiveTable>
           )}
         </CardContent>
       </Card>

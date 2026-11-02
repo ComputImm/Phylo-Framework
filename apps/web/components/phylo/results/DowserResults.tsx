@@ -8,7 +8,7 @@ type Row = Record<string, unknown>;
 
 function autoColumns(rows: Row[]): DataColumn<Row>[] {
   const keys = rows[0] ? Object.keys(rows[0]) : [];
-  return keys.map((k) => ({ key: k, header: k, className: "whitespace-nowrap px-3 py-2" }));
+  return keys.map((k) => ({ key: k, header: k, noWrap: true }));
 }
 
 const WARN_CLASS =

@@ -4,13 +4,12 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+  ResponsiveTable,
+  ResponsiveTableBody,
+  ResponsiveTableCell,
+  ResponsiveTableHeader,
+  ResponsiveTableRow,
+} from "@/components/ui/responsive-table";
 import { getMethodContent } from "@/features/docs/content";
 import { getMethodDocModel } from "@/features/docs/loader";
 import {
@@ -37,39 +36,35 @@ function DownloadSampleButton({ variant }: { variant?: "outline" }) {
 function ParamsTable({ id }: { id: MethodId }) {
   const rows = visibleParamEntries(id);
   return (
-    <div className="overflow-hidden rounded-lg border">
-      <Table>
-        <TableHeader>
-          <TableRow className="bg-muted/50 hover:bg-muted/50">
-            <TableHead className="min-w-[14rem]">Parameter</TableHead>
-            <TableHead>Value</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {rows.map((row) => (
-            <TableRow key={row.path} className="align-top">
-              <TableCell>
-                <div className="flex flex-col gap-1">
-                  <span className="font-medium text-foreground">{row.label}</span>
-                  <code className="w-fit rounded bg-muted px-1 py-0.5 font-mono text-[0.7rem] text-muted-foreground">
-                    {row.path}
-                  </code>
+    <ResponsiveTable stackBelow="sm" className="rounded-lg border">
+      <ResponsiveTableHeader
+        className="bg-muted/50 text-muted-foreground"
+        columns={[{ label: "Parameter", className: "min-w-[14rem]" }, "Value"]}
+      />
+      <ResponsiveTableBody>
+        {rows.map((row) => (
+          <ResponsiveTableRow key={row.path} className="px-3">
+            <ResponsiveTableCell>
+              <div className="flex flex-col gap-1">
+                <span className="font-medium text-foreground">{row.label}</span>
+                <code className="w-fit rounded bg-muted px-1 py-0.5 font-mono text-[0.7rem] text-muted-foreground">
+                  {row.path}
+                </code>
+              </div>
+            </ResponsiveTableCell>
+            <ResponsiveTableCell className="text-muted-foreground">
+              {row.long ? (
+                <div className="max-h-24 max-w-xl overflow-y-auto rounded bg-muted/50 p-2 font-mono text-[0.7rem] leading-relaxed break-all">
+                  {row.value}
                 </div>
-              </TableCell>
-              <TableCell className="text-muted-foreground">
-                {row.long ? (
-                  <div className="max-h-24 max-w-xl overflow-y-auto rounded bg-muted/50 p-2 font-mono text-[0.7rem] leading-relaxed break-all">
-                    {row.value}
-                  </div>
-                ) : (
-                  <span className="font-mono text-xs text-foreground">{row.value}</span>
-                )}
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </div>
+              ) : (
+                <span className="font-mono text-xs text-foreground">{row.value}</span>
+              )}
+            </ResponsiveTableCell>
+          </ResponsiveTableRow>
+        ))}
+      </ResponsiveTableBody>
+    </ResponsiveTable>
   );
 }
 

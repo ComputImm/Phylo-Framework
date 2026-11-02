@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Search, SlidersHorizontal, X } from "lucide-react";
+import { ChevronDown, Search, SlidersHorizontal, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -13,6 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { useMethods } from "@/features/methods/hooks";
 import type { RunListFilters } from "@/features/runs/api";
+import { cn } from "@/lib/utils";
 
 const STATUSES = ["PENDING", "QUEUED", "RUNNING", "DONE", "ERROR", "CANCELLED"] as const;
 const ALL = "__all";
@@ -64,13 +65,12 @@ export default function RunHistoryFilters({
   useEffect(() => setRunIdInput(value.runId ?? ""), [value.runId]);
   useEffect(() => setDatasetInput(value.dataset ?? ""), [value.dataset]);
 
-  const hasActive = !!(
-    value.runId ||
-    value.dataset ||
-    value.status ||
-    value.methodId ||
-    value.createdOn
-  );
+  const activeCount = [value.runId, value.dataset, value.status, value.methodId, value.createdOn].filter(
+    Boolean,
+  ).length;
+  const hasActive = activeCount > 0;
+  // Phones only: the filters would otherwise push the results off the first screen.
+  const [expanded, setExpanded] = useState(false);
 
   const clear = () => {
     setRunIdInput("");
@@ -80,8 +80,18 @@ export default function RunHistoryFilters({
 
   return (
     <div className="mb-5 rounded-xl border bg-card/40 p-4">
-      <div className="mb-3 flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2 text-sm font-medium">
+      <div className="flex items-center justify-between gap-2 md:mb-3">
+        <button
+          type="button"
+          onClick={() => setExpanded((prev) => !prev)}
+          aria-expanded={expanded}
+          className="flex min-h-11 flex-1 items-center gap-2 text-left text-sm font-medium md:hidden"
+        >
+          <SlidersHorizontal className="size-4 text-muted-foreground" />
+          Filters{activeCount > 0 && ` (${activeCount})`}
+          <ChevronDown className={cn("size-4 text-muted-foreground transition-transform", expanded && "rotate-180")} />
+        </button>
+        <div className="hidden items-center gap-2 text-sm font-medium md:flex">
           <SlidersHorizontal className="size-4 text-muted-foreground" />
           Filters
         </div>
@@ -93,7 +103,7 @@ export default function RunHistoryFilters({
         )}
       </div>
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+      <div className={cn("grid-cols-1 gap-3 max-md:mt-3 sm:grid-cols-2 md:grid lg:grid-cols-3 xl:grid-cols-5", expanded ? "grid" : "hidden")}>
         <Field label="Run ID">
           <div className="relative">
             <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />

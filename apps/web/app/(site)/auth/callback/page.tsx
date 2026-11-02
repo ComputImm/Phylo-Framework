@@ -42,7 +42,7 @@ function AuthCallbackContent() {
   }, [searchParams]);
 
   return (
-    <main className="flex min-h-[calc(100vh-3.5rem)] items-center justify-center p-4">
+    <main className="flex min-h-page items-center justify-center p-4">
       <div className="text-center">
         {status === "loading" && (
           <p className="text-muted-foreground">Signing you in…</p>
@@ -67,7 +67,7 @@ export default function AuthCallbackPage() {
   return (
     <Suspense
       fallback={
-        <main className="flex min-h-[calc(100vh-3.5rem)] items-center justify-center p-4">
+        <main className="flex min-h-page items-center justify-center p-4">
           <div className="text-center">
             <p className="text-muted-foreground">Signing you in…</p>
           </div>

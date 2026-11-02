@@ -4,6 +4,13 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import {
+  ResponsiveTable,
+  ResponsiveTableBody,
+  ResponsiveTableCell,
+  ResponsiveTableHeader,
+  ResponsiveTableRow,
+} from "@/components/ui/responsive-table";
+import {
   buildCompatibilityModel,
   getUniversalColumns,
   type ColumnStatus,
@@ -104,35 +111,32 @@ export function DataRequirementsDoc() {
         </div>
 
         <div className="overflow-x-auto rounded-lg border">
-          <table className="w-full border-collapse text-sm">
-            <thead>
-              <tr className="border-b bg-muted/40 text-left">
-                <th className="px-3 py-2 font-semibold">Column</th>
-                {methods.map((m) => (
-                  <th key={m.id} className="px-3 py-2 font-semibold whitespace-nowrap">
-                    {m.name}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
+          <ResponsiveTable stackBelow="md" labelPlacement="side">
+            <ResponsiveTableHeader
+              className="bg-muted/40"
+              columns={[
+                { label: "Column", className: "px-3 py-2 font-semibold" },
+                ...methods.map((m) => ({ label: m.name, className: "px-3 py-2 font-semibold whitespace-nowrap" })),
+              ]}
+            />
+            <ResponsiveTableBody>
               {model.map((row) => (
-                <tr key={row.column} className="border-b last:border-b-0 align-top">
-                  <td className="px-3 py-2">
+                <ResponsiveTableRow key={row.column} className="px-3">
+                  <ResponsiveTableCell>
                     <div className="font-mono text-xs sm:text-sm">{row.column}</div>
                     {row.conditionNote && (
                       <div className="mt-0.5 text-xs text-muted-foreground">{row.conditionNote}</div>
                     )}
-                  </td>
-                  {METHOD_IDS.map((id) => (
-                    <td key={id} className="px-3 py-2">
+                  </ResponsiveTableCell>
+                  {METHOD_IDS.map((id, methodIndex) => (
+                    <ResponsiveTableCell key={id} label={methods[methodIndex]?.name}>
                       <StatusCell status={row.byMethod[id]} />
-                    </td>
+                    </ResponsiveTableCell>
                   ))}
-                </tr>
+                </ResponsiveTableRow>
               ))}
-            </tbody>
-          </table>
+            </ResponsiveTableBody>
+          </ResponsiveTable>
         </div>
       </section>
 
@@ -148,18 +152,21 @@ export function DataRequirementsDoc() {
           </p>
         </div>
         <div className="overflow-x-auto rounded-lg border">
-          <table className="w-full border-collapse text-sm">
-            <thead>
-              <tr className="border-b bg-muted/40 text-left">
-                <th className="px-3 py-2 font-semibold">Method</th>
-                <th className="px-3 py-2 font-semibold">Accepted formats</th>
-              </tr>
-            </thead>
-            <tbody>
+          <ResponsiveTable stackBelow="sm" labelPlacement="side">
+            <ResponsiveTableHeader
+              className="bg-muted/40"
+              columns={[
+                { label: "Method", className: "px-3 py-2 font-semibold" },
+                { label: "Accepted formats", className: "px-3 py-2 font-semibold" },
+              ]}
+            />
+            <ResponsiveTableBody>
               {methods.map((m) => (
-                <tr key={m.id} className="border-b last:border-b-0">
-                  <td className="px-3 py-2 font-medium whitespace-nowrap">{m.name}</td>
-                  <td className="px-3 py-2">
+                <ResponsiveTableRow key={m.id} className="px-3">
+                  <ResponsiveTableCell noWrap className="font-medium">
+                    {m.name}
+                  </ResponsiveTableCell>
+                  <ResponsiveTableCell label="Accepted formats">
                     <div className="flex flex-wrap gap-1.5">
                       {m.formats.length ? (
                         m.formats.map((fmt) => (
@@ -171,11 +178,11 @@ export function DataRequirementsDoc() {
                         <span className="text-muted-foreground">—</span>
                       )}
                     </div>
-                  </td>
-                </tr>
+                  </ResponsiveTableCell>
+                </ResponsiveTableRow>
               ))}
-            </tbody>
-          </table>
+            </ResponsiveTableBody>
+          </ResponsiveTable>
         </div>
       </section>
 

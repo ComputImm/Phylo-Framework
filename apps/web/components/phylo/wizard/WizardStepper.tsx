@@ -33,7 +33,7 @@ export default function WizardStepper({
               disabled={!clickable}
               onClick={() => clickable && onStepClick?.(step.index)}
               className={cn(
-                "flex items-center gap-2 rounded-full px-1.5 py-1 transition",
+                "flex items-center gap-2 rounded-full px-1.5 py-1 transition pointer-coarse:min-h-11",
                 clickable ? "cursor-pointer hover:opacity-80" : "cursor-default",
               )}
               aria-current={active ? "step" : undefined}
@@ -51,7 +51,7 @@ export default function WizardStepper({
               <span
                 className={cn(
                   "text-sm font-medium",
-                  active ? "text-foreground" : "text-muted-foreground",
+                  active ? "text-foreground" : "text-muted-foreground max-sm:sr-only",
                 )}
               >
                 {step.label}
@@ -60,7 +60,7 @@ export default function WizardStepper({
             {i < STEPS.length - 1 && (
               <span
                 className={cn(
-                  "h-px w-6 shrink-0 transition sm:w-10",
+                  "h-px w-3 shrink-0 transition min-[400px]:w-6 sm:w-10",
                   step.index < current ? "bg-primary" : "bg-border",
                 )}
               />

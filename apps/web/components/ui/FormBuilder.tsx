@@ -9,7 +9,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Spinner } from "@/components/ui/loading";
-import { ReactNode, useEffect, useMemo, useRef } from "react";
+import FormSection from "@/components/ui/FormSection";
+import { ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import { Controller, useForm, useWatch, type FieldErrors } from "react-hook-form";
 import { z } from "zod";
 
@@ -406,27 +408,29 @@ function GroupBox({
   fieldMap,
   isFieldVisible,
   renderField,
+  forceOpen,
 }: {
   controller: string;
   childrenInOrder: string[];
   fieldMap: Map<string, JSONSchema>;
   isFieldVisible: (name: string) => boolean;
   renderField: (name: string) => ReactNode;
+  forceOpen: boolean;
 }) {
   const visibleChildren = childrenInOrder.filter((n) => isFieldVisible(n));
   if (!visibleChildren.length) return null;
 
   const title = fieldMap.get(controller)?.title ?? controller;
   return (
-    <div className="col-span-full rounded-2xl border bg-card/30">
-      <div className="flex items-center justify-between px-4 py-2 border-b">
-        <div className="text-sm font-medium">{title}</div>
-        <div className="text-xs text-muted-foreground">Advanced</div>
-      </div>
-      <div className="p-4 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-        {visibleChildren.map((name) => renderField(name))}
-      </div>
-    </div>
+    <FormSection
+      title={<span className="text-sm font-medium">{title}</span>}
+      trailing={<span className="text-xs text-muted-foreground">Advanced</span>}
+      forceOpen={forceOpen}
+      className="rounded-2xl"
+      headerClassName="px-4 py-2"
+    >
+      {visibleChildren.map((name) => renderField(name))}
+    </FormSection>
   );
 }
 
@@ -464,6 +468,7 @@ export default function FormBuilder({
   }, [leafFields]);
 
   const formRef = useRef<HTMLFormElement>(null);
+  const [revealAllSections, setRevealAllSections] = useState(false);
   const { control, handleSubmit, reset, formState } = useForm<FormValues>({
     resolver: zodResolver(zodSchema),
     defaultValues: formDefaults,
@@ -511,6 +516,8 @@ export default function FormBuilder({
   function scrollToFirstError(errors: FieldErrors<FormValues>) {
     const firstName = order.find((name) => Boolean(getNestedValue(errors, name)));
     if (!firstName) return;
+    // The field may sit in a collapsed section, which cannot scroll into view until open.
+    flushSync(() => setRevealAllSections(true));
     const wrapper = formRef.current?.querySelector<HTMLElement>(`[data-field="${firstName}"]`);
     if (!wrapper) return;
     wrapper.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -546,6 +553,7 @@ export default function FormBuilder({
   function renderField(name: string) {
     const def = fieldMap.get(name);
     if (!def) return null;
+    const fieldId = `field-${name}`;
 
     const type = def?.enum ? "enum" : def?.type;
     const placeholder = placeholders[name];
@@ -554,7 +562,7 @@ export default function FormBuilder({
 
     return (
       <div key={name} data-field={name} className="grid gap-2">
-        <Label>{def?.title ?? name}</Label>
+        <Label htmlFor={fieldId}>{def?.title ?? name}</Label>
 
         <Controller
           name={name}
@@ -564,7 +572,7 @@ export default function FormBuilder({
             const control = (() => {
             if (type === "boolean") {
               return (
-                <Switch checked={Boolean(field.value)} onCheckedChange={field.onChange} disabled={disabled} />
+                <Switch id={fieldId} checked={Boolean(field.value)} onCheckedChange={field.onChange} disabled={disabled} />
               );
             }
             if (type === "number" || type === "integer") {
@@ -576,6 +584,7 @@ export default function FormBuilder({
                     : "";
               return (
                 <Input
+                  id={fieldId}
                   type="number"
                   value={numberInputValue}
                   onChange={(e) => {
@@ -605,7 +614,7 @@ export default function FormBuilder({
                   }}
                   disabled={disabled}
                 >
-                  <SelectTrigger className="w-full" aria-invalid={!!fieldState.error}>
+                  <SelectTrigger id={fieldId} className="w-full" aria-invalid={!!fieldState.error}>
                     <SelectValue placeholder="Select" />
                   </SelectTrigger>
                   <SelectContent>
@@ -621,6 +630,10 @@ export default function FormBuilder({
             if (widget === "textarea") {
               return (
                 <Textarea
+                  id={fieldId}
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
                   value={String(field.value ?? "")}
                   onChange={field.onChange}
                   onBlur={field.onBlur}
@@ -629,13 +642,17 @@ export default function FormBuilder({
                   placeholder={placeholder}
                   disabled={disabled}
                   rows={2}
-                  className="font-mono text-xs"
+                  className="font-mono md:text-xs"
                   aria-invalid={!!fieldState.error}
                 />
               );
             }
             return (
               <Input
+                id={fieldId}
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
                 value={String(field.value ?? "")}
                 onChange={field.onChange}
                 onBlur={field.onBlur}
@@ -689,6 +706,7 @@ export default function FormBuilder({
               fieldMap={fieldMap}
               isFieldVisible={isFieldVisible}
               renderField={renderField}
+              forceOpen={revealAllSections}
             />
           );
         })}
@@ -706,18 +724,20 @@ export default function FormBuilder({
     return visibleBasic || visibleGrouped;
   }
 
-  function renderSection(group: FormSectionGroup) {
+  function renderSection(group: FormSectionGroup, index: number) {
     if (!hasVisibleFieldsWithGroups(group.fields)) return null;
 
     return (
-      <section key={group.id} className="col-span-full rounded-lg border bg-card/30">
-        <div className="border-b px-4 py-3">
-          <h4 className="text-sm font-semibold">{group.label}</h4>
-        </div>
-        <div className="grid grid-cols-1 gap-4 p-4 md:grid-cols-2 xl:grid-cols-3">
-          {renderFieldsWithGroups(group.fields)}
-        </div>
-      </section>
+      <FormSection
+        key={group.id}
+        title={<h4 className="text-sm font-semibold">{group.label}</h4>}
+        defaultOpen={index === 0}
+        forceOpen={revealAllSections}
+        className="rounded-lg"
+        headerClassName="px-4 py-3"
+      >
+        {renderFieldsWithGroups(group.fields)}
+      </FormSection>
     );
   }
 
@@ -735,7 +755,7 @@ export default function FormBuilder({
       className={cn("grid gap-4 grid-cols-1 md:grid-cols-2 xl:grid-cols-3")}
     >
       {hasSections ? (
-        sectionGroups.map((group) => renderSection(group))
+        sectionGroups.map((group, index) => renderSection(group, index))
       ) : (
         <>
           {basicFields.map((name) => (isFieldVisible(name) ? renderField(name) : null))}
@@ -748,16 +768,22 @@ export default function FormBuilder({
               fieldMap={fieldMap}
               isFieldVisible={isFieldVisible}
               renderField={renderField}
+              forceOpen={revealAllSections}
             />
           ))}
         </>
       )}
       {footer}
-      <div className="col-span-full flex justify-end">
+      {/* Sticks to the bottom of the pane on phones, so a long form never hides Run. */}
+      <div className="z-10 col-span-full flex flex-col gap-2 max-md:sticky max-md:bottom-0 max-md:border-t max-md:bg-card max-md:py-3 md:flex-row md:items-center md:justify-end">
+        {submitDisabled && submitDisabledReason && (
+          <p className="text-sm text-muted-foreground">{submitDisabledReason}</p>
+        )}
         <Button
           type="submit"
           disabled={disabled || submitDisabled}
           title={submitDisabled ? submitDisabledReason : undefined}
+          className="max-md:w-full"
         >
           {formState.isSubmitting ? (
             <>
