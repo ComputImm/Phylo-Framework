@@ -152,6 +152,7 @@ files or a Dockerfile stops using its lock.
 - API and ClonalTree: `certifi` 2026.7.22 → 2026.10.19; API: `Mako`
   1.4.1 → 1.4.2; GCtree and ClonalTree: `Pillow` 12.3.0 → 13.0.0.
 - API: `dnspython` 2.8.0 → 2.9.0.
+- 2026-11-16: API lock `dnspython` 2.9.0 → 2.9.2 for CVE-2026-128089.
 - API: `rq`, `redis`, `psycopg2-binary` and `python-multipart` removed. None is
   imported; the queue is the Postgres-backed worker, migrations use `asyncpg`,
   and the API parses no form bodies.
