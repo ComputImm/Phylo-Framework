@@ -6,7 +6,7 @@ function run(args) {
 }
 const shared = ['run', '--rm', '--platform', 'linux/amd64', '-v', 'phylo-tests-r-library:/r-library', '-e', 'R_LIBS_USER=/r-library'];
 run([...shared, '--entrypoint', 'Rscript', 'phylo-dowser:latest', '-e',
-  'if (!requireNamespace("covr", quietly=TRUE) || packageVersion("covr") != "3.6.5") remotes::install_version("covr", version="3.6.5", repos="https://cloud.r-project.org", upgrade="never"); stopifnot(packageVersion("covr") == "3.6.5")']);
+  'if (!requireNamespace("covr", quietly=TRUE) || packageVersion("covr") != "3.6.5") install.packages("covr", repos="https://packagemanager.posit.co/cran/2026-07-20", type="source"); stopifnot(packageVersion("covr") == "3.6.5")']);
 for (const method of ['dowser', 'brepphylo']) {
   run([...shared, '-v', `${root}/services/${method}:/srv:ro`, '-v', `${root}/tests/r:/tests:ro`,
     '-v', `${root}/coverage:/coverage`, '-v', `${root}/packages/contracts:/contracts:ro`,
