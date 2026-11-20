@@ -66,7 +66,22 @@ npm run test:system
 npm run test:system -- -k memory      # extra arguments go to pytest
 ```
 
-The R coverage dependency volume `phylo-tests-r-library` is retained as a cache.
+R coverage uses each Dockerfile's `test` target: `covr` is compiled in the
+scientific builder and only its test package/library closure is added to the
+production runtime. Production images contain no coverage tooling or compiler.
+`npm run test:r` builds these test targets before running the existing suites.
+The previous `phylo-tests-r-library` cache volume is no longer used.
+
+Original/optimized image comparisons (real HTTP, tree inference, raw alignment,
+PDF, CSR, artifact/S3 checksums, all configured tree backends and clean build
+contexts) are described in [R-IMAGES.md](./R-IMAGES.md). Run them explicitly:
+
+```bash
+docker compose -f docker-compose.test.yml up -d --wait postgres minio
+.venv/bin/python scripts/init-test-services.py
+.venv/bin/python -m pytest tests/docker/test_r_images.py -v
+```
+
 The test runner uses fixed loopback ports: PostgreSQL **55432**, MinIO **59000**,
 API **58000**, methods **58001–58004**, and web **53000**. Production/dev Compose
 is a separate project and is never stopped or reset. Test PostgreSQL and MinIO

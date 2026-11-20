@@ -50,10 +50,11 @@ or use one of the host modes for hot reload.
 Prerequisites on the host:
 
 - **Node.js 22** and **Python 3.12** (what CI uses), Docker for the containers.
-- For "methods in local R" also **R 4.3+** with the packages of the service you
-  run (CRAN: `plumber`, `dowser`, `alakazam`, `shazam`, `ggtree`, `ape`,
-  `jsonlite`, `jsonvalidate`, `sodium`; Bioconductor: `Biostrings`, `treeio`,
-  `ggtree` and their dependencies), plus PHYLIP, and MUSCLE 5 for ClonalTree.
+- For "methods in local R" use **R 4.4.3**, Bioconductor **3.20**, and the
+  separate package/version locks for the service you run. Dowser and BrepPhylo
+  intentionally use different versions. Native tools, Python/CSR and TeX
+  requirements are listed in [R-IMAGES.md](./R-IMAGES.md). ClonalTree also
+  requires MUSCLE 5. Docker builds use the repository root as their context.
 - On Windows use WSL2: the helper scripts are Bash scripts.
 
 ```bash
@@ -247,6 +248,12 @@ Notice: default `tree_type=dnapars` expects `dnapars` on `PATH` (or `DNAPARS_PAT
 - `species` enum includes built-in references plus `custom` (paste IMGT germline V-gene FASTA into `germline_set_text`).
 - `enable_csr_analysis` + `isotype_column` gate CSR / arborescence post-processing.
 - Removed from UI/backend: `class_column`, color controls, `use_temp_dir`, sequence preprocessing (`apply_filters`, `uppercase`, `gap_policy`, `noniupac_policy`), resume, and server-side `germline_set` paths.
+
+**Existing ClustalW limitation:** the pinned msa 1.38.0 aborts with a native
+FileParser assertion on the raw ExampleAirr fixture in both the original and
+optimized images. This optimization preserves that existing failure; successful
+raw alignment and PDF tests use ClustalOmega. See
+[R-IMAGE-OPTIMIZATION-REPORT.md](./R-IMAGE-OPTIMIZATION-REPORT.md).
 
 **Alignment PDF / LaTeX (`make_alignment_pdf=true`)**
 

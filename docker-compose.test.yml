@@ -161,7 +161,9 @@ services:
   dowser:
     image: phylo-dowser:latest
     init: true  # as in docker-compose.yml: reaps finished job processes
-    build: ./services/dowser
+    build:
+      context: .
+      dockerfile: services/dowser/Dockerfile
     platform: linux/amd64
     profiles: [full]
     environment: *test-method-env
@@ -173,7 +175,9 @@ services:
   brepphylo:
     image: phylo-brepphylo:latest
     init: true  # as in docker-compose.yml: reaps finished job processes
-    build: ./services/brepphylo
+    build:
+      context: .
+      dockerfile: services/brepphylo/Dockerfile
     platform: linux/amd64
     profiles: [full]
     environment: *test-method-env

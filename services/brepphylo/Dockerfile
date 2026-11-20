@@ -1,4 +1,6 @@
-FROM immcantation/suite:4.6.0
+# The large suite is a build environment only; none of its layers ship.
+ARG DEPENDENCY_IMAGE=dependency-build
+FROM immcantation/suite:4.6.0@sha256:81b5124bde572a97aec3924842621877072ac60804cde79dc3b14ab31b65cbd8 AS dependency-build
 
 ENV DEBIAN_FRONTEND=noninteractive \
     CONTRACTS_DIR=/contracts \
@@ -114,14 +116,52 @@ ENV RETICULATE_PYTHON=/usr/bin/python3
 RUN python3 -m pip install --no-cache-dir networkx==3.4.2
 
 WORKDIR /srv
-COPY validators.R /srv/validators.R
-COPY plumber.R /srv/plumber.R
-COPY resource_limits.R /srv/resource_limits.R
-COPY job_manager.R /srv/job_manager.R
-COPY job_runner.R /srv/job_runner.R
-COPY artifact_manifest.R /srv/artifact_manifest.R
-COPY object_storage.R /srv/object_storage.R
+COPY services/brepphylo/validators.R /srv/validators.R
+COPY services/brepphylo/plumber.R /srv/plumber.R
+COPY services/brepphylo/resource_limits.R /srv/resource_limits.R
+COPY services/brepphylo/job_manager.R /srv/job_manager.R
+COPY services/brepphylo/job_runner.R /srv/job_runner.R
+COPY services/brepphylo/artifact_manifest.R /srv/artifact_manifest.R
+COPY services/brepphylo/object_storage.R /srv/object_storage.R
 
 EXPOSE 8003
 
 CMD ["R", "-q", "-e", "pr <- plumber::plumb('/srv/plumber.R'); pr$run(host='0.0.0.0', port=8003)"]
+
+# A verified existing dependency image may be supplied for offline assembly.
+# The default builds the original pinned environment above from source.
+FROM ${DEPENDENCY_IMAGE} AS assemble
+COPY services/r-runtime/assemble.py services/r-runtime/select-packages.R /build/runtime/
+COPY services/brepphylo/runtime-packages* /build/
+RUN Rscript /build/runtime/select-packages.R /build/runtime-packages.txt /build/packages.tsv /build/runtime-packages.lock.tsv \
+    && python3 /build/runtime/assemble.py brepphylo /build/packages.tsv /runtime-root
+
+FROM scratch AS runtime
+COPY --from=assemble /runtime-root/ /
+ENV DEBIAN_FRONTEND=noninteractive \
+    CONTRACTS_DIR=/contracts \
+    DNAPARS_PATH=/usr/local/bin/dnapars \
+    IGPHYML_BIN=/usr/local/share/igphyml/src/igphyml \
+    IGPHYML_MOTIFS=/usr/local/share/igphyml/src/motifs \
+    IGPHYML_PATH=/usr/local/share/igphyml/src/motifs \
+    STRICT_CONTRACT_ROUTES=true
+ENV MAKEFLAGS=-j1 OMP_NUM_THREADS=1 OMP_THREAD_LIMIT=1 OPENBLAS_NUM_THREADS=1 FLEXIBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 BLIS_NUM_THREADS=1 RCPP_PARALLEL_NUM_THREADS=1 RETICULATE_PYTHON=/usr/bin/python3
+ENV PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/local/share/igphyml/src \
+    LD_LIBRARY_PATH=/usr/lib64/R/lib:/usr/lib64/atlas
+WORKDIR /srv
+COPY services/brepphylo/*.R /srv/
+# Check the actual final filesystem, not just the dependency builder.
+RUN Rscript -e 'p <- read.delim("/usr/share/phylo-runtime/r-packages.tsv"); stopifnot(getRversion() == "4.4.3"); for (n in p$Package) { message("Loading ", n); loadNamespace(n) }; actual <- vapply(p$Package, function(n) packageDescription(n, fields="Version"), ""); print(data.frame(package=p$Package, expected=p$Version, actual=actual)[actual != p$Version,]); stopifnot(all(actual == p$Version))'
+EXPOSE 8003
+CMD ["R", "-q", "-e", "pr <- plumber::plumb('/srv/plumber.R'); pr$run(host='0.0.0.0', port=8003)"]
+
+FROM ${DEPENDENCY_IMAGE} AS test-dependencies
+COPY services/r-runtime /build/runtime
+RUN Rscript /build/runtime/test-packages.R \
+    && python3 /build/runtime/test-library.py
+
+FROM runtime AS test
+COPY --from=test-dependencies /test-root/ /
+
+# The default target contains no testing packages or build tools.
+FROM runtime AS production

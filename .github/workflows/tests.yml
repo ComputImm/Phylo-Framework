@@ -70,8 +70,8 @@ jobs:
     timeout-minutes: 120
     needs: unit-integration
     steps:
-      # Every runtime image (two on the large immcantation/suite R image) plus
-      # the instrumented ones do not fit in the space a runner leaves free: the
+      # The scientific dependency builders, runtime images and instrumented
+      # test targets need substantial build-cache space. Previously the
       # disk filled during the browser tests (ENOSPC, Chromium "Page crashed").
       # Remove preinstalled toolchains this job never uses (~25 GB).
       - name: Free disk space for the image builds

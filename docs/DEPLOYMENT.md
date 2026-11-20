@@ -47,6 +47,11 @@ in [CONFIGURATION.md](./CONFIGURATION.md).
 - **Downloads and previews** are streamed through the API, which checks on
   every request that the file belongs to the user. The object store is never
   exposed to browsers.
+- The R services use selective runtime images assembled from a pinned
+  scientific builder. Build from the repository root; keep the existing amd64
+  platform setting, ports, mounts and storage credentials. Runtime dependencies,
+  build commands and measured sizes: [R-IMAGES.md](./R-IMAGES.md). This changes
+  image packaging only; job execution and storage ownership remain the same.
 - A real S3 service can replace the bundled store by changing the `S3_*`
   settings and `STORAGE_BACKEND`; the bundled store is the default and the
   tested path.

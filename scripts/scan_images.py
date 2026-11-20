@@ -5,7 +5,7 @@ How it works
     The scanner (Trivy) runs *inside* a throw-away container of each image, with
     its binary and its vulnerability database mounted read-only, and walks that
     container's own root filesystem (`trivy rootfs /`). Nothing is exported with
-    `docker save`, so the 13 GB R images are scanned as reliably as the small
+    `docker save`, so large images are scanned as reliably as the small
     ones, and peak disk use is the database (well under 1 GB) rather than a copy
     of every image. No Docker socket is handed to any container.
 
@@ -22,7 +22,7 @@ What it covers
     Java archives (.jar/.war/.ear) are skipped unless --with-java is given:
     analysing them needs a second database of more than 1 GB, and the only
     ones in this project's images are two PHYLIP drawing GUIs in the R images,
-    which ship without a Java runtime to run them.
+    which shipped without a Java runtime. The selective R runtimes omit them.
 
 Usage
     scripts/scan_images.py                      # scan the default image set

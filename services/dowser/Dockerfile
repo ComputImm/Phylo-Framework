@@ -1,4 +1,6 @@
-FROM immcantation/suite:4.6.0
+# The large suite is a build environment only; none of its layers ship.
+ARG DEPENDENCY_IMAGE=dependency-build
+FROM immcantation/suite:4.6.0@sha256:81b5124bde572a97aec3924842621877072ac60804cde79dc3b14ab31b65cbd8 AS dependency-build
 
 ENV DEBIAN_FRONTEND=noninteractive \
     CONTRACTS_DIR=/contracts \
@@ -116,8 +118,47 @@ RUN dnf -y upgrade --security --setopt=install_weak_deps=False \
 RUN python3 -m pip install --no-cache-dir --no-deps pyarrow==23.0.1
 
 WORKDIR /srv
-COPY validators.R data_io.R format_clones.R tree_build.R dta.R time_evolution.R internal_seqs.R exports.R handlers.R plumber.R resource_limits.R job_manager.R job_runner.R artifact_manifest.R object_storage.R /srv/
+COPY services/dowser/validators.R services/dowser/data_io.R services/dowser/format_clones.R services/dowser/tree_build.R services/dowser/dta.R services/dowser/time_evolution.R services/dowser/internal_seqs.R services/dowser/exports.R services/dowser/handlers.R services/dowser/plumber.R services/dowser/resource_limits.R services/dowser/job_manager.R services/dowser/job_runner.R services/dowser/artifact_manifest.R services/dowser/object_storage.R /srv/
 
 EXPOSE 8001
 
 CMD ["R", "-q", "-e", "pr <- plumber::plumb('/srv/plumber.R'); pr$run(host='0.0.0.0', port=8001)"]
+
+# A verified existing dependency image may be supplied for offline assembly.
+# The default builds the original pinned environment above from source.
+FROM ${DEPENDENCY_IMAGE} AS assemble
+COPY services/r-runtime/assemble.py services/r-runtime/select-packages.R /build/runtime/
+COPY services/dowser/runtime-packages* /build/
+RUN Rscript /build/runtime/select-packages.R /build/runtime-packages.txt /build/packages.tsv /build/runtime-packages.lock.tsv \
+    && python3 /build/runtime/assemble.py dowser /build/packages.tsv /runtime-root
+
+FROM scratch AS runtime
+COPY --from=assemble /runtime-root/ /
+ENV DEBIAN_FRONTEND=noninteractive \
+    CONTRACTS_DIR=/contracts \
+    DNAPARS_PATH=/usr/local/bin/dnapars \
+    DNAML_PATH=/usr/local/bin/dnaml \
+    RAXML_BIN=/usr/local/bin/raxml-ng \
+    IGPHYML_BIN=/usr/local/share/igphyml/src/igphyml \
+    IGPHYML_MOTIFS=/usr/local/share/igphyml/src/motifs \
+    IGPHYML_PATH=/usr/local/share/igphyml/src/motifs \
+    STRICT_CONTRACT_ROUTES=true
+ENV PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/local/share/igphyml/src \
+    LD_LIBRARY_PATH=/usr/lib64/R/lib:/usr/lib64/atlas
+WORKDIR /srv
+COPY services/dowser/*.R /srv/
+# Check the actual final filesystem, not just the dependency builder.
+RUN Rscript -e 'p <- read.delim("/usr/share/phylo-runtime/r-packages.tsv"); stopifnot(getRversion() == "4.4.3"); for (n in p$Package) { message("Loading ", n); loadNamespace(n) }; actual <- vapply(p$Package, function(n) packageDescription(n, fields="Version"), ""); print(data.frame(package=p$Package, expected=p$Version, actual=actual)[actual != p$Version,]); stopifnot(all(actual == p$Version))'
+EXPOSE 8001
+CMD ["R", "-q", "-e", "pr <- plumber::plumb('/srv/plumber.R'); pr$run(host='0.0.0.0', port=8001)"]
+
+FROM ${DEPENDENCY_IMAGE} AS test-dependencies
+COPY services/r-runtime /build/runtime
+RUN Rscript /build/runtime/test-packages.R \
+    && python3 /build/runtime/test-library.py
+
+FROM runtime AS test
+COPY --from=test-dependencies /test-root/ /
+
+# The default target contains no testing packages or build tools.
+FROM runtime AS production

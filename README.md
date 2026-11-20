@@ -31,8 +31,10 @@ random seed and the version of the software that produced it.
 - **Docker** with the Compose plugin, version **2.17 or newer**
   (`docker compose version`). Docker Desktop on macOS and Windows includes it.
 - **Git**.
-- About **30 GB** of free disk space for the images (the two R method images
-  are about 13 GB each) and **8 GB** of memory for Docker.
+- About **30 GB** of free disk space for images and build caches, and **8 GB**
+  of memory for Docker. The R services now ship selective runtime images; their
+  dependency builders still need the large scientific suite. See
+  [R image architecture and measurements](./docs/R-IMAGES.md).
 
 Nothing else. Node, Python and R are needed only to develop or to run the
 tests.

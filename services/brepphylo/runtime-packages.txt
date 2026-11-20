@@ -1,0 +1,12 @@
+# Independently selected from plumber.R, storage, and upstream BrepPhylo.
+plumber
+jsonlite
+BrepPhylo
+ape
+Biostrings
+igraph
+paws.storage
+digest
+# Optional upstream plotting/alignment paths; preserve original availability.
+phangorn
+ragg
