@@ -443,18 +443,24 @@ async def test_an_expired_run_is_no_longer_offered_for_comparison(db, store, mon
 @db_test
 async def test_the_sweep_loop_survives_its_own_failures(db, monkeypatch):
     monkeypatch.setenv("RETENTION_SWEEP_SECONDS", "0.05")
-    calls = {"n": 0}
+    result_calls = {"n": 0}
+    dataset_calls = {"n": 0}
     stop = asyncio.Event()
 
     async def flaky(*_a, **_k):
-        calls["n"] += 1
-        if calls["n"] >= 3:
+        result_calls["n"] += 1
+        if result_calls["n"] >= 3:
             stop.set()
         raise RuntimeError("database is away")
 
+    async def dataset_sweep(*_a, **_k):
+        dataset_calls["n"] += 1
+
     monkeypatch.setattr(retention, "sweep", flaky)
+    monkeypatch.setattr(retention.dataset_retention, "sweep", dataset_sweep)
     await asyncio.wait_for(retention.retention_loop(stop), timeout=5)
-    assert calls["n"] == 3
+    assert result_calls["n"] == 3
+    assert dataset_calls["n"] == 3
 
 
 # --------------------------------------------------------------------------- #

@@ -31,7 +31,7 @@ PORT_VARIABLES = {
 }
 PROD_SERVICES = ["api-prod", "api-worker-prod", "brepphylo", "clonaltree", "dowser", "gctree", "minio",
                  "minio-init", "postgres", "web-prod"]
-SYSTEM_PATH = "/usr/bin:/bin"          # sh, awk, sed, od, env; no node (docker: see run())
+SYSTEM_PATH = "/usr/bin:/bin"          # sh, awk, sed, od, env (docker/node can be filtered by Deployment)
 
 STUB_DOCKER = r"""#!/bin/sh
 # Stand-in for docker: records each call, answers from the environment.
@@ -86,21 +86,33 @@ class Deployment:
         (self.stub / "services").write_text("\n".join(PROD_SERVICES) + "\n")
         (self.stub / "inside").write_text(INSIDE_OK)
 
-    def system_path_without_docker(self) -> str:
-        """SYSTEM_PATH with any real docker left out: Linux installs it in
-        /usr/bin itself (GitHub runners do), so that PATH alone does not hide it."""
-        hidden = self.stub / "no-docker-bin"
+    def system_path_without(self, *command_prefixes: str) -> str:
+        """Return SYSTEM_PATH with selected commands omitted.
+
+        Linux can install tools such as Docker or Node directly in /usr/bin,
+        so replacing only an earlier PATH entry does not reliably hide them.
+        """
+        hidden = self.stub / f"no-{'-'.join(command_prefixes)}-bin"
         if not hidden.exists():
             hidden.mkdir()
             for directory in SYSTEM_PATH.split(":"):
                 for tool in Path(directory).iterdir():
                     link = hidden / tool.name
-                    if not tool.name.startswith("docker") and not os.path.lexists(link):
+                    if (not tool.name.startswith(command_prefixes)
+                            and not os.path.lexists(link)):
                         link.symlink_to(tool)
         return str(hidden)
 
-    def run(self, *command: str, docker: bool = True, **env: str) -> subprocess.CompletedProcess:
-        path = f"{self.stub / 'bin'}:{SYSTEM_PATH}" if docker else self.system_path_without_docker()
+    def command_path(self, *, docker: bool = True, node: bool = True) -> str:
+        excluded = () if node else ("node",)
+        system_path = SYSTEM_PATH if not excluded else self.system_path_without(*excluded)
+        if docker:
+            return f"{self.stub / 'bin'}:{system_path}"
+        return self.system_path_without("docker", *excluded)
+
+    def run(self, *command: str, docker: bool = True, node: bool = True,
+            **env: str) -> subprocess.CompletedProcess:
+        path = self.command_path(docker=docker, node=node)
         (self.stub / "calls.log").write_text("")
         return subprocess.run(list(command), cwd=self.repo, capture_output=True, text=True, stdin=subprocess.DEVNULL,
                               env={"PATH": path, "STUB_DIR": str(self.stub), "HOME": str(self.stub), **env})
@@ -477,8 +489,9 @@ UP = "compose --profile prod up -d"
 
 
 def test_prod_ends_in_the_documented_compose_command_without_node(deployment):
-    assert shutil.which("node", path=f"{deployment.stub / 'bin'}:{SYSTEM_PATH}") is None
-    done = deployment.run("bash", "run.sh", "prod")
+    path = deployment.command_path(node=False)
+    assert shutil.which("node", path=path) is None
+    done = deployment.run("bash", "run.sh", "prod", node=False)
     assert done.returncode == 0, done.stdout + done.stderr
     assert deployment.calls()[-1] == f"{UP} --build"
     assert "Ready to start" in done.stdout                                  # the pre-start check ran first
