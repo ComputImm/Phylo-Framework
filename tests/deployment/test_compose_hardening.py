@@ -445,6 +445,16 @@ def test_r_service_images_keep_coreutils_for_the_job_time_limit(name):
     assert not removals, removals
 
 
+@pytest.mark.parametrize("name", R_METHODS)
+def test_r_service_images_start_the_plumber_server(name):
+    """The JSON-form CMD is passed directly to R, so the receiver operator
+    must be the literal ``$`` accepted by R rather than shell-style ``$$``."""
+    dockerfile = (ROOT / "services" / name / "Dockerfile").read_text()
+    command = next(line for line in dockerfile.splitlines() if line.startswith("CMD "))
+    assert "pr$run(host='0.0.0.0'" in command
+    assert "pr$$run" not in command
+
+
 # --------------------------------------------------------------------------- #
 # Storage lifecycle: retention, upload limit, job records
 # --------------------------------------------------------------------------- #
@@ -468,6 +478,8 @@ def _constant(path: str, name: str) -> float:
 def test_documented_retention_settings_match_the_built_in_defaults():
     source = "apps/api/services/retention.py"
     assert float(_documented("RESULT_RETENTION_DAYS")) == _constant(source, "DEFAULT_RESULT_RETENTION_DAYS") == 60
+    assert float(_documented("DATASET_RETENTION_DAYS")) == _constant(source, "DEFAULT_DATASET_RETENTION_DAYS") == 60
+    assert float(_documented("DATASET_EXPIRATION_WARNING_HOURS")) == _constant(source, "DEFAULT_DATASET_WARNING_HOURS") == 24
     assert float(_documented("MAX_UPLOAD_MB")) == _constant(source, "DEFAULT_MAX_UPLOAD_MB")
     assert float(_documented("UPLOAD_SESSION_GRACE_HOURS")) == _constant(source, "DEFAULT_UPLOAD_SESSION_GRACE_HOURS")
     assert float(_documented("RETENTION_SWEEP_SECONDS")) == _constant(source, "DEFAULT_SWEEP_SECONDS")
