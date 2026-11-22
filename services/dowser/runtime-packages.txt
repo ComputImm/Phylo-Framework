@@ -12,5 +12,5 @@ ggplot2
 phangorn
 paws.storage
 digest
-# ggplot2::ggsave selects ragg when it is installed in the original image.
+# ggplot2::ggsave selects ragg for the runtime graphics device.
 ragg

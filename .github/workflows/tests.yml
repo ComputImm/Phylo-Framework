@@ -71,8 +71,8 @@ jobs:
     needs: unit-integration
     steps:
       # The scientific dependency builders, runtime images and instrumented
-      # test targets need substantial build-cache space. Previously the
-      # disk filled during the browser tests (ENOSPC, Chromium "Page crashed").
+      # test targets need substantial build-cache space. Reserve enough space
+      # for those builds and the browser-test artifacts.
       # Remove preinstalled toolchains this job never uses (~25 GB).
       - name: Free disk space for the image builds
         run: |

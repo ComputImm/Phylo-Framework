@@ -1,6 +1,6 @@
 # Accepted R package advisories, one id per line, with the reason above it.
-# See docs/SECURITY-AUDIT.md. gh and plotly were removed from the selective
-# runtime closures, so their former exceptions are no longer needed.
+# See docs/SECURITY-AUDIT.md. The selective runtimes contain only the packages
+# required by the two services.
 
 # png: buffer overflow when installed from source on Windows with R < 4.2.
 # BrepPhylo retains png, but runs Linux with R 4.4.3.

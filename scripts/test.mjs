@@ -17,10 +17,12 @@ function run(cmd, args, options = {}) {
 }
 let failed = false;
 try {
-  for (const dir of ['coverage', 'coverage/python', 'coverage/scientific']) fs.mkdirSync(dir, {recursive: true});
-  // Fresh measurements; reports from previous runs must not inflate coverage.
-  for (const dir of ['api-e2e', 'gctree-e2e', 'clonaltree-e2e', 'browser-raw'])
+  for (const dir of ['coverage', 'coverage/python', 'coverage/scientific'])
+    fs.mkdirSync(dir, {recursive: true});
+  // Fresh measurements; stale reports must not inflate coverage.
+  for (const dir of ['api-e2e', 'gctree-e2e', 'clonaltree-e2e', 'browser-raw', 'r-images'])
     fs.rmSync(path.join('coverage', dir), {recursive: true, force: true});
+  fs.mkdirSync('coverage/r-images', {recursive: true});
   run('docker', [...baseCompose, 'up', '-d', '--wait', 'postgres', 'minio']);
   run(python, ['scripts/init-test-services.py']);
   run('npm', ['-w', '@phylo/contracts', 'run', 'build']);
@@ -34,6 +36,10 @@ try {
   if (full) {
     if (process.argv.includes('--build'))
       run('docker', [...baseCompose, '--profile', 'full', 'build', 'api', 'gctree', 'clonaltree', 'dowser', 'brepphylo']);
+    // Build and exercise the current selective R runtimes directly. The suite
+    // owns all image tags it uses.
+    run(python, ['-m', 'pytest', '-c', 'pytest.ini', 'tests/docker/test_r_images.py', '-q',
+      '--junitxml=coverage/r-images/junit.xml']);
     run('docker', [...instrumented, 'build', 'api', 'gctree', 'clonaltree']);
     run('docker', [...instrumented, 'up', '-d', '--wait']);
     run(python, ['scripts/wait-test-methods.py']);

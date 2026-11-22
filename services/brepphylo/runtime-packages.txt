@@ -7,6 +7,6 @@ Biostrings
 igraph
 paws.storage
 digest
-# Optional upstream plotting/alignment paths; preserve original availability.
+# Optional upstream plotting and alignment paths used by supported parameters.
 phangorn
 ragg

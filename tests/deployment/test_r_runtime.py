@@ -61,7 +61,7 @@ def test_version_lock_covers_direct_and_dynamically_loaded_application_packages(
     packages = set(re.findall(r"\b([A-Za-z][A-Za-z0-9.]*)::", source))
     packages |= set(re.findall(r'(?:library|require|requireNamespace)\(["\']?([A-Za-z][A-Za-z0-9.]*)', source))
     assert packages <= lock.keys(), packages - lock.keys()
-    assert lock["ragg"]  # ggplot2 selects it implicitly in the original images.
+    assert lock["ragg"]  # ggplot2 selects it implicitly for runtime graphics.
     assert lock["base"] == "4.4.3"
     assert "BH" not in lock  # LinkingTo headers are a build dependency.
     assert "covr" not in lock and "testthat" not in lock
@@ -75,3 +75,14 @@ def test_scientific_versions_are_locked_independently():
     assert dowser["dowser"] == "2.4.1" and dowser["alakazam"] == "1.4.3"
     assert brep["BrepPhylo"] == "0.4.2" and brep["alakazam"] == "1.3.0"
     assert dowser["BiocParallel"] == "1.40.2" and brep["BiocParallel"] == "1.40.1"
+
+
+def test_full_ci_runs_the_self_contained_production_image_suite():
+    runner = (ROOT / "scripts/test.mjs").read_text()
+    workflow = (ROOT / ".github/workflows/tests.yml").read_text()
+    image_tests = (ROOT / "tests/docker/test_r_images.py").read_text()
+
+    assert "tests/docker/test_r_images.py" in runner
+    assert "npm run test:all -- --build" in workflow
+    assert 'IMAGE_TAG = "current-test"' in image_tests
+    assert '"--target", "dependency-build"' in image_tests

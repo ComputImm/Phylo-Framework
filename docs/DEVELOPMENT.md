@@ -249,11 +249,10 @@ Notice: default `tree_type=dnapars` expects `dnapars` on `PATH` (or `DNAPARS_PAT
 - `enable_csr_analysis` + `isotype_column` gate CSR / arborescence post-processing.
 - Removed from UI/backend: `class_column`, color controls, `use_temp_dir`, sequence preprocessing (`apply_filters`, `uppercase`, `gap_policy`, `noniupac_policy`), resume, and server-side `germline_set` paths.
 
-**Existing ClustalW limitation:** the pinned msa 1.38.0 aborts with a native
-FileParser assertion on the raw ExampleAirr fixture in both the original and
-optimized images. This optimization preserves that existing failure; successful
-raw alignment and PDF tests use ClustalOmega. See
-[R-IMAGE-OPTIMIZATION-REPORT.md](./R-IMAGE-OPTIMIZATION-REPORT.md).
+**ClustalW limitation:** the pinned msa 1.38.0 aborts with a native FileParser
+assertion on the raw ExampleAirr fixture. The job subprocess contains the abort
+and leaves the service healthy. ClustalOmega is the supported and tested path
+for raw alignment and alignment PDFs; see [R-IMAGES.md](./R-IMAGES.md).
 
 **Alignment PDF / LaTeX (`make_alignment_pdf=true`)**
 

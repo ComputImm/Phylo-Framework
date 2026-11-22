@@ -41,17 +41,13 @@ bash scripts/security-audit.sh full     # all of the above
 
 Image and R reports are written to `coverage/security/`.
 
-### How large images are scanned
+### How images are scanned
 
-The original R images were about 13 GB each in the October audit. The current
-images copy only selected runtime files ([R-IMAGES.md](./R-IMAGES.md)).
-Exporting the original images with `docker save` and
-scanning the archive failed (the scanner could not read the archive) and needs
-a second copy of every image on disk. `scripts/scan_images.py` instead starts a
+`scripts/scan_images.py` starts a
 throw-away container of each image with the scanner binary and its database
 mounted read-only, and scans that container's own root filesystem. It needs no
-image export, gives the scanned container no network access and no Docker
-socket, and uses the same amount of disk for a 13 GB image as for a small one.
+`docker save` export, gives the scanned container no network access and no
+Docker socket, and avoids creating a second copy of each image.
 
 If an image cannot be scanned the script exits with an error; it never reports
 an unscanned image as clean.
@@ -192,7 +188,7 @@ Evidence, alternatives and trade-offs: [OBJECT-STORAGE-OPTIONS.md](./OBJECT-STOR
 
 ### 2. R service base image runs an end-of-life operating system
 
-The optimized images use `scratch` as their final base and copy selected
+The R service images use `scratch` as their final base and copy selected
 Fedora 41 runtime files from the digest-pinned `immcantation/suite:4.6.0`
 builder. **Fedora 41 remains end of life**: trimming files does not upgrade or
 patch the operating system. R 4.4.3, the service-specific scientific package
@@ -215,20 +211,11 @@ versions and the native binaries are retained. See [R-IMAGES.md](./R-IMAGES.md).
 
 ### 3. R packages
 
-In the October audit, 540 distinct installed R packages (both original images)
-were checked against the OSV
-database (CRAN and Bioconductor ecosystems). Three advisories matched:
-
-| Package | Advisory | Exposure |
-|---|---|---|
-| `gh` 1.4.1 | RSEC-2025-0, fixed in 1.5.0 | Not loaded by the services; present only as a dependency of `usethis` |
-| `plotly` 4.10.4 | RSEC-2025-1, fixed in 4.12.0 | Not loaded by the services; dependency of `Seurat`/`enchantr` |
-| `png` 0.1-7 | RSEC-2026-1, fixed in 0.1-9 | Applies to source installs on Windows with R < 4.2; the images are Linux with R 4.4.3 |
-
-These were findings from the original suite-based images. The optimized
-closures exclude `gh` and `plotly`, so their exceptions have been removed.
-`png` remains in BrepPhylo's dependency closure; its platform-specific exception
-remains in `.github/r-audit-ignore.txt`. Any other advisory still fails the audit.
+CI checks the locked package closures of both R services against the OSV CRAN
+and Bioconductor databases. BrepPhylo contains `png` 0.1-7; RSEC-2026-1 applies
+to source installs on Windows with R < 4.2, while this runtime is Linux with R
+4.4.3. That platform-specific exception is recorded in
+`.github/r-audit-ignore.txt`; any other advisory fails the audit.
 
 ### 4. Biopython `Bio.Entrez` XXE (CVE-2025-68463) in ClonalTree
 
