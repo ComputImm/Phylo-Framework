@@ -136,65 +136,72 @@ export default function FileManagementPage() {
               />
               <ResponsiveTableBody>
                 {files.map((file) => {
+                  const expiresAt = file.expires_at ? Date.parse(file.expires_at) : Number.NaN;
+                  const expirationDue = Number.isFinite(expiresAt) && expiresAt <= Date.now();
                   const renewing = renewFile.isPending && renewFile.variables === file.id;
                   return (
-                  <ResponsiveTableRow
-                    key={file.id}
-                    className={file.renewal_eligible ? "bg-amber-50/80 dark:bg-amber-950/20" : undefined}
-                  >
-                    <ResponsiveTableCell label="Name" className="font-medium">
-                      <span className="block @2xl:max-w-[12rem] @2xl:truncate" title={file.original_filename}>
-                        {file.original_filename}
-                      </span>
-                    </ResponsiveTableCell>
-                    <ResponsiveTableCell label="Size" className="text-muted-foreground">
-                      {formatSize(file.file_size)}
-                    </ResponsiveTableCell>
-                    <ResponsiveTableCell label="Uploaded" className="text-muted-foreground">
-                      {formatDate(file.uploaded_at)}
-                    </ResponsiveTableCell>
-                    <ResponsiveTableCell label="Expires" className="text-muted-foreground">
-                      <span className={file.renewal_eligible ? "font-medium text-amber-800 dark:text-amber-200" : undefined}>
-                        {file.expires_at ? formatDate(file.expires_at ?? null) : "—"}
-                      </span>
-                      {file.renewal_eligible && (
-                        <span className="mt-0.5 block text-xs text-amber-700 dark:text-amber-300">Expires soon</span>
-                      )}
-                    </ResponsiveTableCell>
-                    <ResponsiveTableCell label="Run ID" className="font-mono text-xs">
-                      <span className="block @2xl:max-w-[8rem] @2xl:truncate">{file.run_id ?? "—"}</span>
-                    </ResponsiveTableCell>
-                    <ResponsiveTableCell className="text-right">
-                      <div className="flex flex-wrap items-center justify-end gap-2">
-                        {file.renewal_eligible && (
+                    <ResponsiveTableRow
+                      key={file.id}
+                      className={file.renewal_eligible || expirationDue ? "bg-amber-50/80 dark:bg-amber-950/20" : undefined}
+                    >
+                      <ResponsiveTableCell label="Name" className="font-medium">
+                        <span className="block @2xl:max-w-[12rem] @2xl:truncate" title={file.original_filename}>
+                          {file.original_filename}
+                        </span>
+                      </ResponsiveTableCell>
+                      <ResponsiveTableCell label="Size" className="text-muted-foreground">
+                        {formatSize(file.file_size)}
+                      </ResponsiveTableCell>
+                      <ResponsiveTableCell label="Uploaded" className="text-muted-foreground">
+                        {formatDate(file.uploaded_at)}
+                      </ResponsiveTableCell>
+                      <ResponsiveTableCell label="Expires" className="text-muted-foreground">
+                        <span className={file.renewal_eligible ? "font-medium text-amber-800 dark:text-amber-200" : undefined}>
+                          {file.expires_at ? formatDate(file.expires_at ?? null) : "—"}
+                        </span>
+                        {file.renewal_eligible && !expirationDue && (
+                          <span className="mt-0.5 block text-xs text-amber-700 dark:text-amber-300">Expires soon</span>
+                        )}
+                        {expirationDue && (
+                          <span role="status" className="mt-0.5 block text-xs text-amber-700 dark:text-amber-300">
+                            Expired and will be deleted soon
+                          </span>
+                        )}
+                      </ResponsiveTableCell>
+                      <ResponsiveTableCell label="Run ID" className="font-mono text-xs">
+                        <span className="block @2xl:max-w-[8rem] @2xl:truncate">{file.run_id ?? "—"}</span>
+                      </ResponsiveTableCell>
+                      <ResponsiveTableCell className="text-right">
+                        <div className="flex flex-wrap items-center justify-end gap-2">
+                          {file.renewal_eligible && !expirationDue && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleRenew(file.id, file.original_filename)}
+                              disabled={renewFile.isPending || deleteFile.isPending}
+                              aria-label={`Renew ${file.original_filename}`}
+                            >
+                              {renewing ? "Renewing…" : "Renew"}
+                            </Button>
+                          )}
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => handleRenew(file.id, file.original_filename)}
-                            disabled={renewFile.isPending || deleteFile.isPending}
-                            aria-label={`Renew ${file.original_filename}`}
+                            className="text-destructive hover:text-destructive"
+                            onClick={() =>
+                              setPendingDelete({
+                                id: file.id,
+                                name: file.original_filename,
+                              })
+                            }
+                            disabled={deleteFile.isPending || renewFile.isPending}
+                            aria-label={`Delete ${file.original_filename}`}
                           >
-                            {renewing ? "Renewing…" : "Renew"}
+                            <Trash2 className="h-4 w-4" />
                           </Button>
-                        )}
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="text-destructive hover:text-destructive"
-                          onClick={() =>
-                            setPendingDelete({
-                              id: file.id,
-                              name: file.original_filename,
-                            })
-                          }
-                          disabled={deleteFile.isPending || renewFile.isPending}
-                          aria-label={`Delete ${file.original_filename}`}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </ResponsiveTableCell>
-                  </ResponsiveTableRow>
+                        </div>
+                      </ResponsiveTableCell>
+                    </ResponsiveTableRow>
                   );
                 })}
               </ResponsiveTableBody>

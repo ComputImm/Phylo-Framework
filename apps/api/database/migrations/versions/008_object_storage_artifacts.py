@@ -24,7 +24,7 @@ def upgrade() -> None:
     op.add_column("files", sa.Column("checksum_sha256", sa.String(length=64), nullable=True))
     op.add_column(
         "files",
-        sa.Column("storage_state", sa.String(length=20), nullable=False, server_default="active"),
+        sa.Column("storage_state", sa.String(length=20), nullable=False, server_default="ACTIVE"),
     )
     op.add_column("files", sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True))
     op.add_column("files", sa.Column("deleted_by", sa.UUID(), nullable=True))

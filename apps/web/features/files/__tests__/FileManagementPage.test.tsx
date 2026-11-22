@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
 import {cleanup, fireEvent, render, screen} from '@testing-library/react';
-import {afterEach, expect, it, vi} from 'vitest';
+import {afterEach, beforeEach, expect, it, vi} from 'vitest';
 import type {FileSummary} from '@phylo/contracts';
 
 const renew = vi.fn().mockResolvedValue({});
+const NOW = new Date('2026-03-01T00:00:00Z');
 
 vi.mock('@/lib/notify', () => ({notify: {success: vi.fn(), error: vi.fn()}}));
 vi.mock('@/features/files/hooks', () => ({
@@ -15,9 +16,15 @@ vi.mock('@/features/files/hooks', () => ({
 import {useDeleteFile, useFilesList, useRenewFile} from '@/features/files/hooks';
 import FileManagementPage from '@/app/(site)/dashboard/files/page';
 
+beforeEach(() => {
+  vi.useFakeTimers();
+  vi.setSystemTime(NOW);
+});
+
 afterEach(() => {
   cleanup();
   renew.mockClear();
+  vi.useRealTimers();
 });
 
 function file(partial: Partial<FileSummary> & Pick<FileSummary, 'id' | 'original_filename'>): FileSummary {
@@ -44,7 +51,7 @@ it('shows the backend expiration and offers renewal only when the backend says s
     },
     isLoading: false,
     error: null,
-  } as ReturnType<typeof useFilesList>);
+  } as unknown as ReturnType<typeof useFilesList>);
   vi.mocked(useDeleteFile).mockReturnValue({mutateAsync: vi.fn(), isPending: false} as unknown as ReturnType<typeof useDeleteFile>);
   vi.mocked(useRenewFile).mockReturnValue({
     mutateAsync: renew,
@@ -61,4 +68,36 @@ it('shows the backend expiration and offers renewal only when the backend says s
 
   fireEvent.click(screen.getByRole('button', {name: 'Renew soon.tsv'}));
   expect(renew).toHaveBeenCalledWith('soon');
+});
+
+it('marks a dataset awaiting cleanup as expired, hides renewal, and keeps manual deletion available', () => {
+  vi.mocked(useFilesList).mockReturnValue({
+    data: {
+      files: [
+        file({
+          id: 'expired',
+          original_filename: 'expired.tsv',
+          expires_at: '2026-02-28T23:59:59Z',
+          renewal_eligible: false,
+        }),
+      ],
+      approaching: [],
+      total_bytes_used: 2048,
+      quota_bytes: 1024 ** 3,
+    },
+    isLoading: false,
+    error: null,
+  } as unknown as ReturnType<typeof useFilesList>);
+  vi.mocked(useDeleteFile).mockReturnValue({mutateAsync: vi.fn(), isPending: false} as unknown as ReturnType<typeof useDeleteFile>);
+  vi.mocked(useRenewFile).mockReturnValue({
+    mutateAsync: renew,
+    isPending: false,
+    variables: undefined,
+  } as unknown as ReturnType<typeof useRenewFile>);
+
+  render(<FileManagementPage />);
+
+  expect(screen.getByRole('status').textContent).toContain('Expired and will be deleted soon');
+  expect(screen.queryByRole('button', {name: 'Renew expired.tsv'})).toBeNull();
+  expect(screen.getByRole('button', {name: 'Delete expired.tsv'})).toBeTruthy();
 });

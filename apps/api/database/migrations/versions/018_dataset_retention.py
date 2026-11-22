@@ -11,9 +11,8 @@ uploaded, so none of them is removed the day this is deployed. The period is
 DATASET_RETENTION_DAYS as set when the migration runs (default 60; 0 leaves
 every date as it is). A date already stored on a row is never moved.
 
-An index for the worker's "which datasets are due" query. Both the name and
-the value of ``storage_state`` are matched: the column default written by an
-earlier migration is ``active``, and the application enum persists ``ACTIVE``.
+An index for the worker's "which datasets are due" query. ``storage_state``
+uses the uppercase enum names persisted by the application.
 
 Additive. No dataset is removed by this migration. Downgrade drops the index
 and leaves ``expires_at`` as it is.
@@ -28,8 +27,8 @@ down_revision: Union[str, None] = "017_runs_write_cost"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
-# Rows the application still serves. See the module docstring for both spellings.
-_ACTIVE = "storage_state IN ('ACTIVE', 'active')"
+# Rows the application still serves.
+_ACTIVE = "storage_state = 'ACTIVE'"
 
 INDEX_SQL = (
     "CREATE INDEX IF NOT EXISTS idx_files_expiry_due ON files (expires_at) "

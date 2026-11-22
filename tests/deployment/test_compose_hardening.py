@@ -445,6 +445,16 @@ def test_r_service_images_keep_coreutils_for_the_job_time_limit(name):
     assert not removals, removals
 
 
+@pytest.mark.parametrize("name", R_METHODS)
+def test_r_service_images_start_the_plumber_server(name):
+    """The JSON-form CMD is passed directly to R, so the receiver operator
+    must be the literal ``$`` accepted by R rather than shell-style ``$$``."""
+    dockerfile = (ROOT / "services" / name / "Dockerfile").read_text()
+    command = next(line for line in dockerfile.splitlines() if line.startswith("CMD "))
+    assert "pr$run(host='0.0.0.0'" in command
+    assert "pr$$run" not in command
+
+
 # --------------------------------------------------------------------------- #
 # Storage lifecycle: retention, upload limit, job records
 # --------------------------------------------------------------------------- #

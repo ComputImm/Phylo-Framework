@@ -103,7 +103,7 @@ def test_renewal_eligibility_uses_the_warning_window_and_utc(monkeypatch):
 
     monkeypatch.setenv("DATASET_EXPIRATION_WARNING_HOURS", "48")
     assert settings.renewal_eligible(now + 36 * HOUR, now) is True
-    assert settings.renewal_eligible(now + 36 * HOUR, now) is True
+    assert settings.renewal_eligible(now + 49 * HOUR, now) is False
     monkeypatch.setenv("DATASET_EXPIRATION_WARNING_HOURS", "72")
     assert settings.renewal_eligible(now + 60 * HOUR, now) is True
     assert settings.renewal_eligible(now + 80 * HOUR, now) is False
@@ -208,6 +208,11 @@ async def test_migration_backfill_dates_only_active_datasets_that_have_none(db, 
     assert 29 * DAY < remaining < 31 * DAY
     assert abs((await _reload(db, kept.id)).expires_at - promised) < timedelta(seconds=1)
     assert (await _reload(db, gone.id)).expires_at is None
+    storage_state_default = await db.scalar(text(
+        "SELECT column_default FROM information_schema.columns "
+        "WHERE table_name = 'files' AND column_name = 'storage_state'"
+    ))
+    assert storage_state_default is not None and "'ACTIVE'" in storage_state_default
     source = _MIGRATION_PATH.read_text()
     assert "DROP INDEX IF EXISTS idx_files_expiry_due" in source
     assert "DELETE FROM files" not in source
@@ -348,14 +353,11 @@ async def test_renewal_waits_out_cleanup_and_does_not_restore_a_deleted_dataset(
 @db_test
 async def test_owner_can_renew_inside_the_window_from_now(db, store, client, account, monkeypatch):
     monkeypatch.setenv("DATASET_EXPIRATION_WARNING_HOURS", "48")
-    user_id = uuid.UUID(account["user"]["id"]) if "user" in account else None
-    listed_before = None
     init = (await client.post("/uploads/init", json={"original_filename": "keep.fasta", "expected_size": 4})).json()
     uploaded = (await client.put(init["content_url"], content=b"ACGT")).json()
     file_id = uuid.UUID(uploaded["file_id"])
     row = await FileRepository(db).get_by_id(file_id)
-    assert user_id is None or row.user_id == user_id
-    owner = (await db.execute(select(User).where(User.id == row.user_id))).scalar_one()
+    assert str(row.user_id) == account["user"]["id"]
 
     too_early = await client.post(f"/files/{file_id}/renew")
     assert too_early.status_code == 409
@@ -373,17 +375,25 @@ async def test_owner_can_renew_inside_the_window_from_now(db, store, client, acc
     assert body["file"]["renewal_eligible"] is False
     assert new_expiry - previous > 50 * DAY
 
+    row = await _reload(db, file_id)
+    row.expires_at = _now() + 36 * HOUR
+    await db.commit()
+    dataset_route_before = _now()
     same = await client.post(f"/datasets/{file_id}/renew")
-    assert same.status_code == 409
-    assert same.json()["data"]["code"] == "RENEWAL_NOT_DUE"
+    assert same.status_code == 200, same.text
+    same_body = same.json()
+    assert same_body["status"] == "renewed"
+    assert same_body["file"]["id"] == str(file_id)
+    dataset_route_expiry = datetime.fromisoformat(same_body["file"]["expires_at"])
+    assert dataset_route_before + 60 * DAY - timedelta(minutes=1) < dataset_route_expiry
+    assert dataset_route_expiry < dataset_route_before + 60 * DAY + timedelta(minutes=1)
+    assert same_body["file"]["renewal_eligible"] is False
 
     listed = (await client.get("/files")).json()
     assert listed["approaching"] == []
     summary = next(item for item in listed["files"] if item["id"] == str(file_id))
-    assert summary["expires_at"] == body["file"]["expires_at"]
+    assert summary["expires_at"] == same_body["file"]["expires_at"]
     assert summary["renewal_eligible"] is False
-    assert owner.id == row.user_id
-    assert listed_before is None
 
 
 @db_test
