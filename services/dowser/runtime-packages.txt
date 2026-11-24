@@ -1,0 +1,16 @@
+# Direct imports, all application modules, and optional graphics/export paths.
+plumber
+jsonlite
+dowser
+alakazam
+ape
+jsonvalidate
+Biostrings
+readr
+ggtree
+ggplot2
+phangorn
+paws.storage
+digest
+# ggplot2::ggsave selects ragg for the runtime graphics device.
+ragg

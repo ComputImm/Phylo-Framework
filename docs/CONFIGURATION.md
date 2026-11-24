@@ -214,7 +214,7 @@ No port is published on the host in production. See
 | `METHOD_<NAME>_CONTAINER_PORT` | `8001`–`8004` | Port of each method service (Dowser, GCtree, BrepPhylo, ClonalTree) |
 | `METHOD_<NAME>_URL_DOCKER` | `http://phylo-<name>:<port>` | Address of each method service as containers see it. Normally leave unset. If set, its port must equal the one above |
 | `PHYLO_GIT_DIR` | `./.git` | Where the image build reads the deployed commit from. `config/no-git` when deploying from an archive |
-| `IMMCANTATION_PLATFORM` | `linux/amd64` | Platform of the two R service images, whose base image exists for amd64 only |
+| `IMMCANTATION_PLATFORM` | `linux/amd64` | Platform of the two R service images; their pinned scientific builder and native binaries require amd64 (also after runtime trimming) |
 
 All ports must be between 1024 and 65535. `./run.sh ports` shows and checks
 them.

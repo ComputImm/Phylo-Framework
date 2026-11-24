@@ -28,6 +28,17 @@ if (is.na(validators_path)) {
 }
 source(validators_path, local = FALSE)
 
+clustalw_candidates <- c(
+  file.path(getwd(), "clustalw_compat.R"),
+  "/srv/clustalw_compat.R",
+  "clustalw_compat.R"
+)
+clustalw_path <- clustalw_candidates[file.exists(clustalw_candidates)][1]
+if (is.na(clustalw_path)) {
+  stop("clustalw_compat.R not found; expected alongside plumber.R or at /srv/clustalw_compat.R")
+}
+source(clustalw_path, local = FALSE)
+
 # ---------------------------
 # Helpers
 # ---------------------------
@@ -1041,7 +1052,7 @@ run_handler_impl <- function(req, res) {
 
     tree_start <- Sys.time()
     log_vec <- character(0)
-    err <- tryCatch({
+    invoke_clone_lineage <- function() {
       with_di2multi_top_alias({
         log_vec <<- capture.output({
           args <- list(
@@ -1067,6 +1078,14 @@ run_handler_impl <- function(req, res) {
           do.call(BrepPhylo::cloneLineage, args)
         })
       })
+    }
+
+    err <- tryCatch({
+      if (identical(algorithm, "ClustalW")) {
+        with_external_clustalw(invoke_clone_lineage())
+      } else {
+        invoke_clone_lineage()
+      }
       NULL
     }, error = function(e) e)
 

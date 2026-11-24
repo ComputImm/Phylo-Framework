@@ -11,7 +11,9 @@
       "composeHost": "phylo-dowser",
       "path": "services/dowser",
       "dockerImage": "phylo-dowser:dev",
-      "platform": "linux/amd64"
+      "platform": "linux/amd64",
+      "buildContext": ".",
+      "dockerfile": "services/dowser/Dockerfile"
     },
     {
       "id": "gctree",
@@ -30,7 +32,9 @@
       "composeHost": "phylo-brepphylo",
       "path": "services/brepphylo",
       "dockerImage": "phylo-brepphylo:dev",
-      "platform": "linux/amd64"
+      "platform": "linux/amd64",
+      "buildContext": ".",
+      "dockerfile": "services/brepphylo/Dockerfile"
     },
     {
       "id": "clonaltree",

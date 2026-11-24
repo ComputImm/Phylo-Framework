@@ -217,12 +217,13 @@ function servicePlatform(service) {
 }
 
 async function dockerBuild(service) {
-  const servicePath = service.path || `services/${service.id}`;
+  const servicePath = service.buildContext || service.path || `services/${service.id}`;
   const absPath = resolveFromRoot(servicePath, `services/${service.id}`);
   const image = service.dockerImage || `phylo-${service.id}:dev`;
   const platform = servicePlatform(service);
   const buildArgs = ["build"];
   if (platform) buildArgs.push("--platform", platform);
+  if (service.dockerfile) buildArgs.push("-f", service.dockerfile);
   buildArgs.push("-t", image, ".");
   let lastError;
   for (let attempt = 1; attempt <= DOCKER_BUILD_RETRIES; attempt += 1) {

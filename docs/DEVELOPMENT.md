@@ -50,10 +50,12 @@ or use one of the host modes for hot reload.
 Prerequisites on the host:
 
 - **Node.js 22** and **Python 3.12** (what CI uses), Docker for the containers.
-- For "methods in local R" also **R 4.3+** with the packages of the service you
-  run (CRAN: `plumber`, `dowser`, `alakazam`, `shazam`, `ggtree`, `ape`,
-  `jsonlite`, `jsonvalidate`, `sodium`; Bioconductor: `Biostrings`, `treeio`,
-  `ggtree` and their dependencies), plus PHYLIP, and MUSCLE 5 for ClonalTree.
+- For "methods in local R" use **R 4.4.3**, Bioconductor **3.20**, and the
+  separate package/version locks for the service you run. Dowser and BrepPhylo
+  intentionally use different versions. Native tools, including ClustalW 2.1,
+  and the Python/CSR and TeX requirements are listed in
+  [R-IMAGES.md](./R-IMAGES.md). ClonalTree also requires MUSCLE 5. Docker builds
+  use the repository root as their context.
 - On Windows use WSL2: the helper scripts are Bash scripts.
 
 ```bash

@@ -41,15 +41,13 @@ bash scripts/security-audit.sh full     # all of the above
 
 Image and R reports are written to `coverage/security/`.
 
-### How large images are scanned
+### How images are scanned
 
-The two R images are about 13 GB each. Exporting them with `docker save` and
-scanning the archive failed (the scanner could not read the archive) and needs
-a second copy of every image on disk. `scripts/scan_images.py` instead starts a
+`scripts/scan_images.py` starts a
 throw-away container of each image with the scanner binary and its database
 mounted read-only, and scans that container's own root filesystem. It needs no
-image export, gives the scanned container no network access and no Docker
-socket, and uses the same amount of disk for a 13 GB image as for a small one.
+`docker save` export, gives the scanned container no network access and no
+Docker socket, and avoids creating a second copy of each image.
 
 If an image cannot be scanned the script exits with an error; it never reports
 an unscanned image as clean.
@@ -90,7 +88,7 @@ Development-only npm advisories are printed but do not fail a job (finding 5).
 | API (`apps/api`) | `requirements.txt` | `requirements.lock` |
 | GCtree | `requirements.txt` | `requirements.lock` |
 | ClonalTree | `requirements.txt` | `requirements.lock` |
-| Dowser, BrepPhylo | R packages from the dated CRAN snapshot `2026-07-20`; base image `immcantation/suite:4.6.0`; BrepPhylo pinned to a commit | none |
+| Dowser, BrepPhylo | Digest-pinned Immcantation builder, dated CRAN snapshots, Bioconductor 3.20, pinned BrepPhylo commit; final base `scratch` | Independent `services/<method>/runtime-packages.lock.tsv` files; builds fail on any closure/version drift |
 
 Each Python Dockerfile installs with `-r requirements.txt -c requirements.lock`,
 so an image build installs exactly the versions that were tested and audited.
@@ -190,53 +188,34 @@ Evidence, alternatives and trade-offs: [OBJECT-STORAGE-OPTIONS.md](./OBJECT-STOR
 
 ### 2. R service base image runs an end-of-life operating system
 
-Dowser and BrepPhylo are built on `immcantation/suite:4.6.0` (April 2025),
-which is Fedora 41, and Fedora 41 is end of life.
+The R service images use `scratch` as their final base and copy selected
+Fedora 41 runtime files from the digest-pinned `immcantation/suite:4.6.0`
+builder. **Fedora 41 remains end of life**: trimming files does not upgrade or
+patch the operating system. R 4.4.3, the service-specific scientific package
+versions and the native binaries are retained. See [R-IMAGES.md](./R-IMAGES.md).
 
-- **What was fixed:** the distribution had published 141 security updates
-  (11 rated Important, none Critical; packages such as `expat`, `sqlite`, `pam`,
-  `sudo`, `qt5-qtbase`) that the base image did not contain. Both Dockerfiles
-  now apply them (`dnf upgrade --security`). After the rebuild the distribution
-  reports 0 pending security updates. R 4.4.3, every R package version and the
-  IgPhyML / PHYLIP / RAxML-NG binaries are byte-identical before and after, and
-  Dowser and BrepPhylo produced identical trees on the regression dataset.
-- **What stays open:** Fedora 41 publishes no new advisories. A vulnerability
-  found from now on in one of its 1,312 OS packages will neither be fixed nor
-  show up in any scan of these images.
-- **What cannot be scanned:** Trivy has no vulnerability data for Fedora. For
-  these two images it only assesses the pip- and npm-installed parts; the scan
-  report says "OS not assessed" and shows the distribution's own count of
-  pending updates instead. "0 pending" therefore means "everything the
-  distribution ever published is applied", not "no known vulnerabilities".
-- **Exposure:** both services are internal-only (no published port), have no
-  route to the internet and none to the database, run without Linux
-  capabilities, hold only the write-only object-store credential, and read
-  inputs that already passed the framework's validation from a read-only mount.
-- **Why the base is not upgraded here:** `immcantation/suite` 4.7.0 and 4.8.0
-  exist, but they change the R, Dowser and IgPhyML versions. That alters the
-  scientific environment and needs a deliberate upgrade with the scientific
-  regression suite, not a security patch.
-- **Also in the base image:** `pyarrow` 19.0.1 (one high finding, fixed in
-  23.0.1), installed with pip for the Immcantation command-line tools. The R
-  services do not load it.
-- **Java archives:** the images contain two PHYLIP drawing GUIs
-  (`DrawGram.jar`, `DrawTree.jar`) and no Java runtime, so they cannot run.
-  They are skipped by the image scan unless `--with-java` is given.
+- The dependency builder still applies `dnf upgrade --security`; those updates
+  are limited to advisories Fedora published before end of life. Nothing here
+  claims that this makes the runtime free of vulnerabilities.
+- Compilers, development headers, unrelated Python tooling (including pyarrow),
+  PHYLIP drawing GUIs, BLAST/IgBLAST and unrelated R packages do not ship.
+  BrepPhylo retains Python, numpy, scipy and networkx for its upstream bridge.
+- Runtime images have no package manager or RPM database. The file checksums
+  and R package manifest under `/usr/share/phylo-runtime` identify retained
+  contents. Trivy still cannot assess Fedora OS vulnerabilities; the scanner's
+  package-manager fallback now reports unavailable rather than zero updates.
+  OS vulnerability coverage remains a limitation.
+- Internal-only networks, capabilities, credentials and read-only input mounts
+  are unchanged. Moving the scientific stack to a supported OS remains a
+  separate compatibility and regression task.
 
 ### 3. R packages
 
-540 distinct installed R packages (both images) were checked against the OSV
-database (CRAN and Bioconductor ecosystems). Three advisories matched:
-
-| Package | Advisory | Exposure |
-|---|---|---|
-| `gh` 1.4.1 | RSEC-2025-0, fixed in 1.5.0 | Not loaded by the services; present only as a dependency of `usethis` |
-| `plotly` 4.10.4 | RSEC-2025-1, fixed in 4.12.0 | Not loaded by the services; dependency of `Seurat`/`enchantr` |
-| `png` 0.1-7 | RSEC-2026-1, fixed in 0.1-9 | Applies to source installs on Windows with R < 4.2; the images are Linux with R 4.4.3 |
-
-They ship inside the base image. Accepted, with these reasons, in
-`.github/r-audit-ignore.txt`; any new advisory fails the CI audit. They go away
-with an `immcantation/suite` upgrade.
+CI checks the locked package closures of both R services against the OSV CRAN
+and Bioconductor databases. BrepPhylo contains `png` 0.1-7; RSEC-2026-1 applies
+to source installs on Windows with R < 4.2, while this runtime is Linux with R
+4.4.3. That platform-specific exception is recorded in
+`.github/r-audit-ignore.txt`; any other advisory fails the audit.
 
 ### 4. Biopython `Bio.Entrez` XXE (CVE-2025-68463) in ClonalTree
 

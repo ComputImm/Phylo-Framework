@@ -66,7 +66,23 @@ npm run test:system
 npm run test:system -- -k memory      # extra arguments go to pytest
 ```
 
-The R coverage dependency volume `phylo-tests-r-library` is retained as a cache.
+R coverage uses each Dockerfile's `test` target: `covr` is compiled in the
+scientific builder and only its test package/library closure is added to the
+production runtime. Production images contain no coverage tooling or compiler.
+`npm run test:r` builds these test targets before running the existing suites.
+
+The full runner also builds and validates the current production R images. It
+exercises real HTTP jobs, every configured tree backend, DTA, time evolution,
+paired heavy/light processing, raw alignment, PDF, CSR, artifact/S3 checksums
+and clean build contexts. Details are in [R-IMAGES.md](./R-IMAGES.md). For a
+targeted run:
+
+```bash
+docker compose -f docker-compose.test.yml up -d --wait postgres minio
+.venv/bin/python scripts/init-test-services.py
+.venv/bin/python -m pytest tests/docker/test_r_images.py -v
+```
+
 The test runner uses fixed loopback ports: PostgreSQL **55432**, MinIO **59000**,
 API **58000**, methods **58001–58004**, and web **53000**. Production/dev Compose
 is a separate project and is never stopped or reset. Test PostgreSQL and MinIO
@@ -91,6 +107,7 @@ test ports/project and integration database are shared. A CI job owns its runner
 | API and Python services | pytest-cov plus actual API/worker/job child-process coverage | `coverage/python/combined-html/index.html` |
 | Python unit/integration tests alone | Branch coverage including unimported source | `coverage/python/html/index.html` |
 | R modules, independently for both methods | covr, validator/orchestration/manifest/process-lifecycle tests | `coverage/dowser/cobertura.xml`, `coverage/brepphylo/cobertura.xml` |
+| Production R images | pytest JUnit, service logs and result/artifact evidence | `coverage/r-images/` |
 | Browser runs | Playwright HTML, JUnit, screenshot and trace on failure | `coverage/browser/index.html`, `test-results/browser/` |
 | Real scientific executions | JUnit and per-method result/tree/artifact JSON | `coverage/scientific/` |
 | Container diagnostics | Captured before cleanup, even after failure | `coverage/docker.log` |
@@ -102,7 +119,7 @@ baselines are deliberately the measured starting point, **not a claim of 100%
 coverage**. Raise them as uncovered behavior is tested. Reports include files
 never imported by tests; they do not count only the selected tested utilities.
 
-The full runner deletes previous raw browser/process measurements before a run.
+The full runner deletes stale raw browser/process measurements before a run.
 Python child processes are instrumented with a test-only `.pth` file; SIGTERM and
 normal exit save coverage, then source paths from each container are mapped back
 to the corresponding repository service. Each service gets a distinct mapping,
@@ -176,84 +193,12 @@ slower than tests against cached images. Local execution validates the workflow'
 commands; the hosted GitHub Actions run itself needs a push to the repository.
 
 Coverage is not proof of scientific validity or publication acceptance. The
-scientific suite covers a documented single-clone scenario with fixed parameters,
-not every stochastic seed, external tree builder, DTA/time-evolution combination,
-or large-data performance limit. Upstream algorithm internals are not tested here.
+scientific suite covers documented fixed datasets and parameters, not every
+stochastic seed, parameter combination or large-data performance limit.
+Upstream algorithm internals are not tested here.
 Google and email boundaries are simulated; no real accounts or mail are used.
 The browser suite runs on Chromium, with phone and tablet emulation for layout, not Firefox, WebKit or real devices. Remaining
 uncovered branches and UI flows stay visible in the reports.
-
-## Earlier verified run (2026-10-05, historical)
-
-This section records a run made before the production hardening. The current
-figures are in [VALIDATION.md](./VALIDATION.md). The commit id below is from
-before the repository history was rewritten on 2026-10-13 and no longer exists;
-by its position (the first commit after tag `v2.1.0`) it corresponds to
-`4d8946ef9be5`.
-
-The revised checkout at base commit
-`a596dbf0a01fd066d396be39a77f8cbb82e8c491` passed `npm run test:all` after a
-complete `npm run test:all -- --build` image rebuild. The rebuild used cached
-dependency layers and rebuilt the changed source layers; it was a local arm64
-Docker Desktop run, not hosted CI or an anonymous public checkout. The test run
-used Node 24.13.0, Python 3.12.12, Docker 29.6.2, Docker Compose 5.3.1, pytest
-8.4.1, pytest-asyncio 1.1.0, coverage.py 7.10.6, Vitest 3.2.4, Playwright
-1.55.1 and covr 3.6.5. Node 22 was not installed locally; CI remains configured
-for Node 22.
-
-`npm run lint` exited successfully with existing unused-disable warnings in two
-test files and one unused `vi` import warning. `npm run build` initially failed
-because the sandbox could not resolve `fonts.googleapis.com`; the same command
-passed with network access, compiling all 24 static/SSG routes. Type checking
-passed both in the suite and production build.
-
-| Suite | Result |
-|---|---:|
-| Python unit/integration | 312 passed, 0 skipped |
-| TS shared contracts | 123 passed |
-| Frontend unit/component | 161 passed |
-| Real scientific success/failure scenarios | 8 passed |
-| Real Chromium workflows | 7 passed |
-| Dowser and BrepPhylo R tests | All validator/module/process/lifecycle assertions passed |
-
-| Layer | Line coverage | Branch coverage |
-|---|---:|---:|
-| API, combined | 74.57% | 54.06% |
-| GCtree service, combined | 63.74% | 51.01% |
-| ClonalTree service, combined | 78.70% | 63.23% |
-| Executable TS contracts | 100% | 100% |
-| Frontend unit + browser | 43.60% | 60.57% |
-| Dowser R modules | 45.39% | Not measured by this covr report |
-| BrepPhylo R modules | 65.35% | Not measured by this covr report |
-
-The unit-only frontend line figure is 17.67%; the combined figure includes real
-page behavior, zero-abundance inspection and all four result views. Python's
-combined line-and-branch aggregate is 68.44%; the
-layer-specific figures above are more informative. One rebuilt run encountered a
-single Dowser browser timeout after the same method had passed the scientific
-suite; the immediately repeated complete suite passed all seven browser workflows.
-Generated reports, not these snapshots, are authoritative for subsequent runs.
-
-### Isolated production-profile clean start
-
-A scratch copy of the revised source was started as Compose project
-`phylo-nargab-clean` with separate container names, local image tags, ports,
-bind-mounted staging and named volumes. This isolation was necessary because the
-ordinary Compose definition contains fixed container names and image tags. The
-host was arm64. Changed source layers were rebuilt; dependency layers were partly
-cached, and the web image ran a fresh `npm ci` before its successful production
-build. This was a local-source exercise rather than an anonymous public checkout.
-
-`docker compose --profile prod up -d --build` applied all migrations, initialized
-both MinIO buckets and the scoped method user, started the worker, and reached
-healthy API, web and PostgreSQL states. The
-documented in-container storage check passed upload/exists/download/stream/delete
-round trips for both datasets and artifacts. A real Chromium flow completed a
-GCtree run with the documented 43-sequence sample, retrieved three trees and
-three API artifact entries, and downloaded `gctree_run_artifacts.zip`.
-
-The isolated containers, network and volumes were then removed. Ordinary
-developer and test volumes were not used or reset.
 
 Tool configuration references: [Vitest 3 coverage](https://v3.vitest.dev/guide/coverage/)
 and [Playwright web server lifecycle](https://playwright.dev/docs/test-webserver).

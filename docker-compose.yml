@@ -521,8 +521,8 @@ services:
     init: true
     platform: ${IMMCANTATION_PLATFORM:-linux/amd64}
     build:
-      context: ./services/dowser
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: services/dowser/Dockerfile
     image: phylo-dowser:latest
     environment:
       <<: *method_common_env
@@ -617,8 +617,8 @@ services:
     init: true
     platform: ${IMMCANTATION_PLATFORM:-linux/amd64}
     build:
-      context: ./services/brepphylo
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: services/brepphylo/Dockerfile
     image: phylo-brepphylo:latest
     environment:
       <<: *method_common_env

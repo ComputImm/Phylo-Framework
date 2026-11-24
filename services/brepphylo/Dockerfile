@@ -1,4 +1,6 @@
-FROM immcantation/suite:4.6.0
+# The large suite is a build environment only; none of its layers ship.
+ARG DEPENDENCY_IMAGE=dependency-build
+FROM immcantation/suite:4.6.0@sha256:81b5124bde572a97aec3924842621877072ac60804cde79dc3b14ab31b65cbd8 AS dependency-build
 
 ENV DEBIAN_FRONTEND=noninteractive \
     CONTRACTS_DIR=/contracts \
@@ -92,6 +94,30 @@ RUN R CMD INSTALL --no-multiarch /tmp/brepphylo-src \
 RUN R -q -e "install.packages(c('paws.storage', 'digest'), repos = 'https://packagemanager.posit.co/cran/2026-07-20'); \
     stopifnot(all(c('paws.storage', 'digest') %in% rownames(installed.packages())))"
 
+# msa 1.38.0's embedded ClustalW aborts inside its native FileParser on this
+# toolchain. Install the official standalone 2.1 binary and its licence notices;
+# the service adapter preserves msa's R return contract for BrepPhylo.
+ARG CLUSTALW_BINARY_URL=https://ftp.ebi.ac.uk/pub/software/clustalw2/2.1/clustalw-2.1-linux-x86_64-libcppstatic.tar.gz
+ARG CLUSTALW_BINARY_SHA256=e8d488db819789642b44945d238a50847f2505a1a0dd43d374fa7f29f9defcac
+ARG CLUSTALW_SOURCE_URL=https://ftp.ebi.ac.uk/pub/software/clustalw2/2.1/clustalw-2.1.tar.gz
+ARG CLUSTALW_SOURCE_SHA256=e052059b87abfd8c9e695c280bfba86a65899138c82abccd5b00478a80f49486
+RUN curl -fsSL --retry 5 --retry-all-errors --connect-timeout 30 \
+      -o /tmp/clustalw-bin.tar.gz "$CLUSTALW_BINARY_URL" \
+    && echo "$CLUSTALW_BINARY_SHA256  /tmp/clustalw-bin.tar.gz" | sha256sum --check --strict \
+    && curl -fsSL --retry 5 --retry-all-errors --connect-timeout 30 \
+      -o /tmp/clustalw-src.tar.gz "$CLUSTALW_SOURCE_URL" \
+    && echo "$CLUSTALW_SOURCE_SHA256  /tmp/clustalw-src.tar.gz" | sha256sum --check --strict \
+    && tar -xzf /tmp/clustalw-bin.tar.gz -C /tmp \
+    && tar -xzf /tmp/clustalw-src.tar.gz -C /tmp \
+    && install -m 0755 /tmp/clustalw-2.1-linux-x86_64-libcppstatic/clustalw2 /usr/local/bin/clustalw2 \
+    && ln -sf /usr/local/bin/clustalw2 /usr/local/bin/clustalw \
+    && install -d /usr/share/licenses/clustalw \
+    && install -m 0644 /tmp/clustalw-2.1/COPYING /tmp/clustalw-2.1/COPYING.LESSER /usr/share/licenses/clustalw/ \
+    && { /usr/local/bin/clustalw2 -HELP >/tmp/clustalw-help.txt 2>&1 || [ "$?" -eq 1 ]; } \
+    && grep -qi clustal /tmp/clustalw-help.txt \
+    && rm -rf /tmp/clustalw-2.1 /tmp/clustalw-2.1-linux-x86_64-libcppstatic \
+      /tmp/clustalw-bin.tar.gz /tmp/clustalw-src.tar.gz /tmp/clustalw-help.txt
+
 # Security updates published for the base image's distribution since the base
 # image was built. `--security` limits this to packages with a security
 # advisory, so R and the scientific tools keep the versions the base image
@@ -114,14 +140,54 @@ ENV RETICULATE_PYTHON=/usr/bin/python3
 RUN python3 -m pip install --no-cache-dir networkx==3.4.2
 
 WORKDIR /srv
-COPY validators.R /srv/validators.R
-COPY plumber.R /srv/plumber.R
-COPY resource_limits.R /srv/resource_limits.R
-COPY job_manager.R /srv/job_manager.R
-COPY job_runner.R /srv/job_runner.R
-COPY artifact_manifest.R /srv/artifact_manifest.R
-COPY object_storage.R /srv/object_storage.R
+COPY services/brepphylo/validators.R /srv/validators.R
+COPY services/brepphylo/clustalw_compat.R /srv/clustalw_compat.R
+COPY services/brepphylo/plumber.R /srv/plumber.R
+COPY services/brepphylo/resource_limits.R /srv/resource_limits.R
+COPY services/brepphylo/job_manager.R /srv/job_manager.R
+COPY services/brepphylo/job_runner.R /srv/job_runner.R
+COPY services/brepphylo/artifact_manifest.R /srv/artifact_manifest.R
+COPY services/brepphylo/object_storage.R /srv/object_storage.R
 
 EXPOSE 8003
 
 CMD ["R", "-q", "-e", "pr <- plumber::plumb('/srv/plumber.R'); pr$run(host='0.0.0.0', port=8003)"]
+
+# A verified existing dependency image may be supplied for offline assembly.
+# The default builds the original pinned environment above from source.
+FROM ${DEPENDENCY_IMAGE} AS assemble
+COPY services/r-runtime/assemble.py services/r-runtime/select-packages.R /build/runtime/
+COPY services/brepphylo/runtime-packages* /build/
+RUN Rscript /build/runtime/select-packages.R /build/runtime-packages.txt /build/packages.tsv /build/runtime-packages.lock.tsv \
+    && python3 /build/runtime/assemble.py brepphylo /build/packages.tsv /runtime-root
+
+FROM scratch AS runtime
+COPY --from=assemble /runtime-root/ /
+ENV DEBIAN_FRONTEND=noninteractive \
+    CONTRACTS_DIR=/contracts \
+    CLUSTALW_BIN=/usr/local/bin/clustalw2 \
+    DNAPARS_PATH=/usr/local/bin/dnapars \
+    IGPHYML_BIN=/usr/local/share/igphyml/src/igphyml \
+    IGPHYML_MOTIFS=/usr/local/share/igphyml/src/motifs \
+    IGPHYML_PATH=/usr/local/share/igphyml/src/motifs \
+    STRICT_CONTRACT_ROUTES=true
+ENV MAKEFLAGS=-j1 OMP_NUM_THREADS=1 OMP_THREAD_LIMIT=1 OPENBLAS_NUM_THREADS=1 FLEXIBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 BLIS_NUM_THREADS=1 RCPP_PARALLEL_NUM_THREADS=1 RETICULATE_PYTHON=/usr/bin/python3
+ENV PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/local/share/igphyml/src \
+    LD_LIBRARY_PATH=/usr/lib64/R/lib:/usr/lib64/atlas
+WORKDIR /srv
+COPY services/brepphylo/*.R /srv/
+# Check the actual final filesystem, not just the dependency builder.
+RUN Rscript -e 'p <- read.delim("/usr/share/phylo-runtime/r-packages.tsv"); stopifnot(getRversion() == "4.4.3"); for (n in p$Package) { message("Loading ", n); loadNamespace(n) }; actual <- vapply(p$Package, function(n) packageDescription(n, fields="Version"), ""); print(data.frame(package=p$Package, expected=p$Version, actual=actual)[actual != p$Version,]); stopifnot(all(actual == p$Version))'
+EXPOSE 8003
+CMD ["R", "-q", "-e", "pr <- plumber::plumb('/srv/plumber.R'); pr$run(host='0.0.0.0', port=8003)"]
+
+FROM ${DEPENDENCY_IMAGE} AS test-dependencies
+COPY services/r-runtime /build/runtime
+RUN Rscript /build/runtime/test-packages.R \
+    && python3 /build/runtime/test-library.py
+
+FROM runtime AS test
+COPY --from=test-dependencies /test-root/ /
+
+# The default target contains no testing packages or build tools.
+FROM runtime AS production
