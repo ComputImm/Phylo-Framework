@@ -144,7 +144,7 @@ that was used; it is kept so that it can be repeated or checked.
 ### Rewrite and verify (touches nothing on GitHub)
 
 ```bash
-git clone --mirror https://github.com/Kiana8181/phylo-framework.git phylo-framework-mirror.git
+git clone --mirror https://github.com/ComputImm/Phylo-Framework.git phylo-framework-mirror.git
 cp -R phylo-framework-mirror.git phylo-framework-original.git        # untouched copy, for comparison and as a backup
 
 sh scripts/history-cleanup/rewrite-mirror.sh phylo-framework-mirror.git
@@ -182,7 +182,7 @@ Not run by any script in this repository.
 
 ```bash
 cd phylo-framework-mirror.git
-git remote add origin https://github.com/Kiana8181/phylo-framework.git
+git remote add origin https://github.com/ComputImm/Phylo-Framework.git
 git push --force origin 'refs/heads/*:refs/heads/*' 'refs/tags/*:refs/tags/*'
 ```
 
@@ -222,7 +222,7 @@ git status                                  # anything not pushed?
 git format-patch origin/<branch> -o ../my-patches    # only if you have commits that are not on GitHub
 cp .env ../phylo-framework.env.backup       # your local configuration
 cd .. && mv phylo-framework phylo-framework.old
-git clone https://github.com/Kiana8181/phylo-framework.git
+git clone https://github.com/ComputImm/Phylo-Framework.git
 cp phylo-framework.env.backup phylo-framework/.env
 cd phylo-framework && git am ../my-patches/*.patch   # only if you made patches
 rm -rf ../phylo-framework.old               # it still contains the old history
@@ -239,7 +239,7 @@ cd /path/to/phylo-framework
 cp .env ~/phylo-framework.env.backup && chmod 600 ~/phylo-framework.env.backup     # first, always
 ./run.sh down                               # stops the containers, keeps the volumes
 cd .. && mv phylo-framework phylo-framework.old
-git clone https://github.com/Kiana8181/phylo-framework.git phylo-framework
+git clone https://github.com/ComputImm/Phylo-Framework.git phylo-framework
 cp ~/phylo-framework.env.backup phylo-framework/.env && chmod 600 phylo-framework/.env
 [ -d phylo-framework.old/runtime ] && mv phylo-framework.old/runtime phylo-framework/runtime
 cd phylo-framework
