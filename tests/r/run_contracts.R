@@ -1,6 +1,17 @@
 # Runs in either R method image; covers disk lifecycle and object manifest.
 source('/srv/job_manager.R')
 source('/srv/artifact_manifest.R')
+
+proc_alive <- function(pid) {
+  pid <- suppressWarnings(as.integer(pid))
+  if (length(pid) != 1L || is.na(pid) || pid < 1L) return(FALSE)
+  stat <- tryCatch(
+    suppressWarnings(readLines(sprintf('/proc/%d/stat', pid), n = 1L, warn = FALSE)),
+    error = function(e) character(0)
+  )
+  length(stat) == 1L && nzchar(stat) && !grepl('\\) Z ', stat, fixed = FALSE)
+}
+
 testthat::test_that('job state persists, terminal cancellation is idempotent, missing jobs are absent', {
   Sys.setenv(METHOD_JOBS_DIR = tempfile('phylo-r-tests-'))
   mgr <- job_manager_new('test')
@@ -82,14 +93,10 @@ testthat::test_that('real child job completes and a running process group can be
   withr::defer(system(sprintf('kill -KILL -- -%d 2>/dev/null', state$pid)))
   testthat::expect_equal(job_manager_cancel(mgr, id)$status, 'CANCELLED')
   testthat::expect_equal(job_manager_cancel(mgr, id)$status, 'CANCELLED')
-  alive <- function(pid) {
-    path <- sprintf('/proc/%d/stat', pid)
-    file.exists(path) && !grepl('\\) Z ', readLines(path, warn=FALSE)[1])
-  }
   deadline <- Sys.time() + 8
-  while ((alive(state$pid) || alive(state$child_pid)) && Sys.time() < deadline) Sys.sleep(0.1)
-  testthat::expect_false(alive(state$pid))
-  testthat::expect_false(alive(state$child_pid))
+  while ((proc_alive(state$pid) || proc_alive(state$child_pid)) && Sys.time() < deadline) Sys.sleep(0.1)
+  testthat::expect_false(proc_alive(state$pid))
+  testthat::expect_false(proc_alive(state$child_pid))
   unlink(mgr$root, recursive=TRUE)
   unlink(runner)
 })
@@ -369,10 +376,6 @@ with_recovery_runner <- function(code) {
   assign('.job_find_runner', function() runner, envir = target)
   on.exit({ assign('.job_find_runner', original, envir = target); unlink(runner) }, add = TRUE)
   force(code)
-}
-proc_alive <- function(pid) {
-  path <- sprintf('/proc/%d/stat', as.integer(pid))
-  file.exists(path) && !grepl('\\) Z ', readLines(path, warn = FALSE)[1])
 }
 wait_for <- function(pred, seconds = 40) {
   deadline <- Sys.time() + seconds

@@ -56,16 +56,11 @@ The BrepPhylo image provides:
 - dnapars, IgPhyML and its motif tables;
 - Python, numpy, scipy and networkx for the upstream CSR/arborescence bridge;
 - TeX, Perl helpers and fonts required for optional alignment PDFs;
-- simple, DNAPARS and IgPhyML trees, ClustalOmega alignment, plotting,
+- simple, DNAPARS and IgPhyML trees, ClustalOmega and ClustalW alignment, plotting,
   CSR/arborescence analysis, exports and ZIP generation.
 
 RETICULATE_PYTHON=/usr/bin/python3 keeps the service on the Python runtime
 inside the image and prevents runtime downloads.
-
-The pinned msa 1.38.0 ClustalW implementation aborts on the project raw-sequence
-fixture. Jobs run in child processes, so the failure is reported without
-stopping the service. ClustalOmega is the supported positive raw-alignment and
-alignment-PDF path.
 
 ## Build and run
 
@@ -126,11 +121,10 @@ historical image. It checks:
   image;
 - all six Dowser tree backends, internal sequences, discrete-trait analysis,
   time evolution and paired heavy/light processing;
-- all three BrepPhylo tree types, ClustalOmega, alignment PDF and
+- all three BrepPhylo tree types, ClustalOmega, ClustalW, alignment PDF and
   CSR/arborescence paths;
 - real asynchronous jobs, object-storage downloads/checksums, invalid input,
   clean build contexts and the optional dependency-image build path;
-- containment of the known ClustalW child-process abort.
 
 ## Platform and security constraints
 

@@ -99,6 +99,8 @@ def main():
     commands += ["dnapars"]
     if method == "dowser":
         commands += ["dnaml", "raxml-ng"]
+    else:
+        commands += ["clustalw2"]
     for command in commands:
         path = shutil.which(command)
         if not path:

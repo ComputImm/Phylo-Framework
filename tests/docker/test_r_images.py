@@ -150,6 +150,8 @@ def test_runtime_and_api(running_service):
     commands = "R Rscript dnapars igphyml zip setsid timeout nproc curl".split()
     if method == "dowser":
         commands += ["dnaml", "raxml-ng"]
+    else:
+        commands += ["clustalw2"]
     for command in commands:
         assert docker("exec", container, "which", command)
     docker("exec", container, "Rscript", "-e",
@@ -281,6 +283,8 @@ def test_optional_scientific_paths(running_service):
                                "algorithm": "ClustalOmega", "make_alignment_pdf": True}, SAMPLE),
             ("clustal-omega", {"input_sequence_mode": "raw_sequence", "sequence_column": "sequence",
                                "algorithm": "ClustalOmega"}, SAMPLE),
+            ("clustal-w", {"input_sequence_mode": "raw_sequence", "sequence_column": "sequence",
+                           "algorithm": "ClustalW"}, SAMPLE),
         ]
 
     for label, changes, file_path in variants:
@@ -300,6 +304,8 @@ def test_optional_scientific_paths(running_service):
         elif label == "alignment-pdf":
             bundle = next(a for a in result["artifact_files"] if a["filename"].endswith(".zip"))
             assert ".pdf" in docker("exec", container, "unzip", "-Z1", bundle["path"])
+        elif label == "clustal-w":
+            assert result["stats"]["algorithm"] == "ClustalW"
 
 
 @pytest.mark.parametrize("method", ["dowser", "brepphylo"])
@@ -324,27 +330,3 @@ def test_dependency_image_build_argument_is_self_contained(method):
     packages = docker("run", "--rm", "--platform", "linux/amd64", "--entrypoint", "cat",
                       result, "/usr/share/phylo-runtime/r-packages.tsv")
     assert packages == (ROOT / f"services/{method}/runtime-packages.lock.tsv").read_text().strip()
-
-
-def test_clustalw_native_abort_is_contained(fixture_directory):
-    # msa 1.38.0 currently aborts in clustalw::FileParser for this fixture. The
-    # child job must report the error without taking the parent service down.
-    with service("brepphylo", fixture_directory) as (client, _):
-        params = {**PARAMS["brepphylo"], "input_sequence_mode": "raw_sequence",
-                  "sequence_column": "sequence", "algorithm": "ClustalW"}
-        response = client.post("/jobs", json={"file_path": SAMPLE, "params": params,
-                                              "run_id": uuid4().hex, "timeout_seconds": 120})
-        assert response.status_code in (200, 202), response.text
-        job_id = response.json()["job_id"]
-        deadline = time.monotonic() + 120
-        while True:
-            status = client.get(f"/jobs/{job_id}/status").json()
-            if status["status"] in ("DONE", "ERROR", "CANCELLED"):
-                break
-            assert time.monotonic() < deadline, status
-            time.sleep(0.25)
-        assert status["status"] == "ERROR", status
-        log = client.get(f"/jobs/{job_id}/log")
-        assert log.status_code == 200
-        assert "clustalw::FileParser" in log.text and "Assertion" in log.text
-        assert client.get("/spec").status_code == 200

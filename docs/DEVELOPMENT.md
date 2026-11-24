@@ -52,9 +52,10 @@ Prerequisites on the host:
 - **Node.js 22** and **Python 3.12** (what CI uses), Docker for the containers.
 - For "methods in local R" use **R 4.4.3**, Bioconductor **3.20**, and the
   separate package/version locks for the service you run. Dowser and BrepPhylo
-  intentionally use different versions. Native tools, Python/CSR and TeX
-  requirements are listed in [R-IMAGES.md](./R-IMAGES.md). ClonalTree also
-  requires MUSCLE 5. Docker builds use the repository root as their context.
+  intentionally use different versions. Native tools, including ClustalW 2.1,
+  and the Python/CSR and TeX requirements are listed in
+  [R-IMAGES.md](./R-IMAGES.md). ClonalTree also requires MUSCLE 5. Docker builds
+  use the repository root as their context.
 - On Windows use WSL2: the helper scripts are Bash scripts.
 
 ```bash
@@ -248,11 +249,6 @@ Notice: default `tree_type=dnapars` expects `dnapars` on `PATH` (or `DNAPARS_PAT
 - `species` enum includes built-in references plus `custom` (paste IMGT germline V-gene FASTA into `germline_set_text`).
 - `enable_csr_analysis` + `isotype_column` gate CSR / arborescence post-processing.
 - Removed from UI/backend: `class_column`, color controls, `use_temp_dir`, sequence preprocessing (`apply_filters`, `uppercase`, `gap_policy`, `noniupac_policy`), resume, and server-side `germline_set` paths.
-
-**ClustalW limitation:** the pinned msa 1.38.0 aborts with a native FileParser
-assertion on the raw ExampleAirr fixture. The job subprocess contains the abort
-and leaves the service healthy. ClustalOmega is the supported and tested path
-for raw alignment and alignment PDFs; see [R-IMAGES.md](./R-IMAGES.md).
 
 **Alignment PDF / LaTeX (`make_alignment_pdf=true`)**
 

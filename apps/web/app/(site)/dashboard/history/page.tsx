@@ -133,7 +133,7 @@ export default function RunHistoryPage() {
                     return (
                       <ResponsiveTableRow key={run.id}>
                         <ResponsiveTableCell label="Run ID" className="font-mono text-xs">
-                          <div className="flex items-center gap-1 @4xl:max-w-[14rem]">
+                          <div className="flex items-center gap-1 @4xl:max-w-[10rem]">
                             <span className="min-w-0 break-all @4xl:truncate" title={run.id}>
                               {run.id}
                             </span>
@@ -157,7 +157,7 @@ export default function RunHistoryPage() {
                         <ResponsiveTableCell label="Method">{run.method_id}</ResponsiveTableCell>
                         <ResponsiveTableCell label="Dataset" className="text-muted-foreground">
                           <span
-                            className="@4xl:inline-block @4xl:max-w-[16rem] @4xl:truncate @4xl:align-bottom"
+                            className="@4xl:inline-block @4xl:max-w-[11rem] @4xl:truncate @4xl:align-bottom"
                             title={datasetLabel}
                           >
                             {datasetLabel}
@@ -201,7 +201,7 @@ export default function RunHistoryPage() {
                           {formatDate(run.created_at)}
                         </ResponsiveTableCell>
                         <ResponsiveTableCell>
-                          <div className="flex flex-wrap items-center gap-2 pt-1 @4xl:flex-nowrap @4xl:justify-end @4xl:gap-1 @4xl:pt-0">
+                          <div className="flex flex-wrap items-center gap-2 pt-1 @4xl:justify-end @4xl:gap-1 @4xl:pt-0">
                             <Link href={`/dashboard?runId=${run.id}`} className="flex-1 @4xl:flex-none">
                               <Button variant="ghost" size="sm" className="w-full gap-1 border @4xl:w-auto @4xl:border-0">
                                 View details

@@ -126,10 +126,15 @@ plan for the default budget; `./run.sh check` tells you when a budget is set in
 
 Docker Compose has no shared, elastic pool: each container gets its own cap,
 fixed when it starts. The script therefore gives every container a measured
-minimum plus a weighted part of what is left:
+minimum plus a weighted part of what is left. On the current selective R
+images, with one worker and the regression sample:
 
-- Each R service (Dowser, BrepPhylo) idles near 800 MiB and needs about 1.7 GiB
-  for one small job, so its minimum is 2048 MiB.
+- Dowser averaged 835 MiB at idle and peaked at 1780 MiB working set during
+  the job (1848 MiB raw cgroup usage).
+- BrepPhylo averaged 827 MiB at idle and peaked at 1696 MiB for its default job.
+  Its ClustalW path peaked at 1698 MiB (about 1699 MiB raw cgroup usage).
+- Each R service therefore keeps a 2048 MiB minimum rather than treating the
+  measured sample peak as a hard limit.
 - GCtree's minimum is 512 MiB, ClonalTree's 384 MiB.
 - Postgres, MinIO, the API, the worker and the web server together need about
   1.3 GiB.
@@ -240,11 +245,18 @@ runs one job at a time with one thread.
 
 `<METHOD>` is `DOWSER`, `BREPPHYLO`, `GCTREE` or `CLONALTREE`.
 
-The memory estimates are **measured on the sample dataset** (Dowser and
-BrepPhylo: 850 MiB idle + 950 MiB per job; GCtree 160 + 256; ClonalTree
-60 + 192). A much larger dataset needs more. If your users run large datasets,
-raise `PHYLO_<METHOD>_JOB_MEMORY_MB`; an estimate that is too low lets jobs start
-that then collide. The estimate is the one number here that cannot be derived
+The admission defaults are deliberately rounded estimates for the sample
+dataset (Dowser and BrepPhylo: 850 MiB idle + 950 MiB per job; GCtree 160 +
+256; ClonalTree 60 + 192). The R figures were re-measured on linux/amd64 with
+one worker on 2026-11-24 by sampling the cgroup every 100 ms; working set here
+means `memory.current - inactive_file`. The observed incremental peaks were
+945 MiB for Dowser, 870 MiB for the default BrepPhylo job and 872 MiB for its
+ClustalW job. The configured 950 MiB remains the conservative admission value.
+
+These measurements are not maximums: a larger dataset or a different workload
+can need more. If your users run large datasets, raise
+`PHYLO_<METHOD>_JOB_MEMORY_MB`; an estimate that is too low lets jobs start that
+then collide. The estimate is the one number here that cannot be derived
 automatically.
 
 ### Waiting instead of oversubscribing

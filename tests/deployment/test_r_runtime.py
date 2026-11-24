@@ -86,3 +86,18 @@ def test_full_ci_runs_the_self_contained_production_image_suite():
     assert "npm run test:all -- --build" in workflow
     assert 'IMAGE_TAG = "current-test"' in image_tests
     assert '"--target", "dependency-build"' in image_tests
+
+
+def test_brepphylo_clustalw_runtime_is_pinned_and_exercised():
+    dockerfile = (ROOT / "services/brepphylo/Dockerfile").read_text()
+    assembler_source = (ROOT / "services/r-runtime/assemble.py").read_text()
+    adapter = (ROOT / "services/brepphylo/clustalw_compat.R").read_text()
+    image_tests = (ROOT / "tests/docker/test_r_images.py").read_text()
+
+    assert "clustalw-2.1-linux-x86_64-libcppstatic.tar.gz" in dockerfile
+    assert "CLUSTALW_BINARY_SHA256=" in dockerfile
+    assert "CLUSTALW_SOURCE_SHA256=" in dockerfile
+    assert 'commands += ["clustalw2"]' in assembler_source
+    assert 'on.exit({' in adapter and 'assign("msaClustalW", original' in adapter
+    assert '("clustal-w",' in image_tests
+    assert "test_clustalw_native_abort_is_contained" not in image_tests

@@ -94,6 +94,30 @@ RUN R CMD INSTALL --no-multiarch /tmp/brepphylo-src \
 RUN R -q -e "install.packages(c('paws.storage', 'digest'), repos = 'https://packagemanager.posit.co/cran/2026-07-20'); \
     stopifnot(all(c('paws.storage', 'digest') %in% rownames(installed.packages())))"
 
+# msa 1.38.0's embedded ClustalW aborts inside its native FileParser on this
+# toolchain. Install the official standalone 2.1 binary and its licence notices;
+# the service adapter preserves msa's R return contract for BrepPhylo.
+ARG CLUSTALW_BINARY_URL=https://ftp.ebi.ac.uk/pub/software/clustalw2/2.1/clustalw-2.1-linux-x86_64-libcppstatic.tar.gz
+ARG CLUSTALW_BINARY_SHA256=e8d488db819789642b44945d238a50847f2505a1a0dd43d374fa7f29f9defcac
+ARG CLUSTALW_SOURCE_URL=https://ftp.ebi.ac.uk/pub/software/clustalw2/2.1/clustalw-2.1.tar.gz
+ARG CLUSTALW_SOURCE_SHA256=e052059b87abfd8c9e695c280bfba86a65899138c82abccd5b00478a80f49486
+RUN curl -fsSL --retry 5 --retry-all-errors --connect-timeout 30 \
+      -o /tmp/clustalw-bin.tar.gz "$CLUSTALW_BINARY_URL" \
+    && echo "$CLUSTALW_BINARY_SHA256  /tmp/clustalw-bin.tar.gz" | sha256sum --check --strict \
+    && curl -fsSL --retry 5 --retry-all-errors --connect-timeout 30 \
+      -o /tmp/clustalw-src.tar.gz "$CLUSTALW_SOURCE_URL" \
+    && echo "$CLUSTALW_SOURCE_SHA256  /tmp/clustalw-src.tar.gz" | sha256sum --check --strict \
+    && tar -xzf /tmp/clustalw-bin.tar.gz -C /tmp \
+    && tar -xzf /tmp/clustalw-src.tar.gz -C /tmp \
+    && install -m 0755 /tmp/clustalw-2.1-linux-x86_64-libcppstatic/clustalw2 /usr/local/bin/clustalw2 \
+    && ln -sf /usr/local/bin/clustalw2 /usr/local/bin/clustalw \
+    && install -d /usr/share/licenses/clustalw \
+    && install -m 0644 /tmp/clustalw-2.1/COPYING /tmp/clustalw-2.1/COPYING.LESSER /usr/share/licenses/clustalw/ \
+    && { /usr/local/bin/clustalw2 -HELP >/tmp/clustalw-help.txt 2>&1 || [ "$?" -eq 1 ]; } \
+    && grep -qi clustal /tmp/clustalw-help.txt \
+    && rm -rf /tmp/clustalw-2.1 /tmp/clustalw-2.1-linux-x86_64-libcppstatic \
+      /tmp/clustalw-bin.tar.gz /tmp/clustalw-src.tar.gz /tmp/clustalw-help.txt
+
 # Security updates published for the base image's distribution since the base
 # image was built. `--security` limits this to packages with a security
 # advisory, so R and the scientific tools keep the versions the base image
@@ -117,6 +141,7 @@ RUN python3 -m pip install --no-cache-dir networkx==3.4.2
 
 WORKDIR /srv
 COPY services/brepphylo/validators.R /srv/validators.R
+COPY services/brepphylo/clustalw_compat.R /srv/clustalw_compat.R
 COPY services/brepphylo/plumber.R /srv/plumber.R
 COPY services/brepphylo/resource_limits.R /srv/resource_limits.R
 COPY services/brepphylo/job_manager.R /srv/job_manager.R
@@ -140,6 +165,7 @@ FROM scratch AS runtime
 COPY --from=assemble /runtime-root/ /
 ENV DEBIAN_FRONTEND=noninteractive \
     CONTRACTS_DIR=/contracts \
+    CLUSTALW_BIN=/usr/local/bin/clustalw2 \
     DNAPARS_PATH=/usr/local/bin/dnapars \
     IGPHYML_BIN=/usr/local/share/igphyml/src/igphyml \
     IGPHYML_MOTIFS=/usr/local/share/igphyml/src/motifs \

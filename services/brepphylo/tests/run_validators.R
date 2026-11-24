@@ -13,6 +13,7 @@ root_dir <- function() {
 
 root <- root_dir()
 source(file.path(root, "validators.R"))
+source(file.path(root, "clustalw_compat.R"))
 
 failures <- 0L
 assert_true <- function(cond, msg) {
@@ -27,6 +28,26 @@ assert_equal <- function(a, b, msg) {
     failures <<- failures + 1L
   }
 }
+
+# standalone ClustalW adapter
+clustal_input <- Biostrings::DNAStringSet(c(first = "ACGTACGT", second = "ACGTTCGT", third = "ACGACGT"))
+original_msa_clustalw <- get("msaClustalW", envir = asNamespace("msa"))
+clustal_alignment <- with_external_clustalw(
+  msa::msa(clustal_input, method = "ClustalW", order = "input", type = "dna")
+)
+assert_true(inherits(clustal_alignment, "MsaDNAMultipleAlignment"), "ClustalW returns msa DNA alignment")
+assert_equal(names(clustal_alignment@unmasked), names(clustal_input), "ClustalW preserves input names and order")
+assert_true(length(unique(Biostrings::width(clustal_alignment@unmasked))) == 1L, "ClustalW output is aligned")
+assert_true(
+  identical(get("msaClustalW", envir = asNamespace("msa")), original_msa_clustalw),
+  "ClustalW adapter restores the msa namespace binding"
+)
+adapter_error <- try(with_external_clustalw(stop("expected adapter test error")), silent = TRUE)
+assert_true(inherits(adapter_error, "try-error"), "ClustalW adapter propagates errors")
+assert_true(
+  identical(get("msaClustalW", envir = asNamespace("msa")), original_msa_clustalw),
+  "ClustalW adapter restores the msa namespace binding after an error"
+)
 
 # require_positive_int
 assert_true(is.null(require_positive_int("min_clone_size", 10)), "10 ok")

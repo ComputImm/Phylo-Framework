@@ -42,7 +42,7 @@ async function unreachableElements(page: Page): Promise<string[]> {
       }
       return false;
     };
-    return [...document.querySelectorAll('body *')]
+    return Array.from(document.querySelectorAll('body *'))
       .filter((element) => {
         const box = element.getBoundingClientRect();
         return box.width > 0 && box.height > 0 && box.right > width + 1 && !clipsOrScrolls(element)
@@ -115,7 +115,7 @@ test('controls are big enough to touch', async ({page, hasTouch}) => {
   await expect(page.getByRole('heading', {name: 'Run history'})).toBeVisible();
   await page.getByRole('button', {name: /view details/i}).first().waitFor();
   const tooSmall = await page.evaluate(() =>
-    [...document.querySelectorAll('[data-slot="button"], [data-slot="input"], [data-slot="select-trigger"]')]
+    Array.from(document.querySelectorAll('[data-slot="button"], [data-slot="input"], [data-slot="select-trigger"]'))
       .map((element) => ({element, box: element.getBoundingClientRect()}))
       .filter(({box}) => box.width > 0 && (box.height < 44 || box.width < 44))
       .map(({element, box}) => `${element.textContent || element.getAttribute('aria-label')}: ${box.width}x${box.height}`),
@@ -180,7 +180,9 @@ test.describe('tables', () => {
     await useMockApi(page);
     await page.goto('/dashboard/history');
     const details = page.getByRole('button', {name: /view details/i}).first();
+    const sequenceTrace = page.getByRole('button', {name: /sequence trace/i}).first();
     await expect(details).toBeVisible();
+    await expect(sequenceTrace).toBeVisible();
     const header = page.locator('thead').first();
     if (viewport!.width < 1024) {
       await expect(header).toBeHidden();
@@ -189,7 +191,10 @@ test.describe('tables', () => {
       await expect(header).toBeVisible();
       await expect(page.locator('tbody tr').first().getByText('Dataset', {exact: true})).toBeHidden();
     }
-    expect((await details.boundingBox())!.x + (await details.boundingBox())!.width).toBeLessThanOrEqual(viewport!.width);
+    for (const action of [details, sequenceTrace]) {
+      const box = (await action.boundingBox())!;
+      expect(box.x + box.width).toBeLessThanOrEqual(viewport!.width);
+    }
   });
 
   test('phone: history filters stay out of the way until asked for', async ({page, viewport}) => {
