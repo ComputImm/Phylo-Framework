@@ -5,7 +5,7 @@
 export const LEGAL = {
   appName: "Phylo Framework",
   operator: "Kiana Hashemi",
-  contactEmail: "kianahashemi8@gmail.com",
+  contactEmail: "khashemi@computimm.com",
   /** Change this whenever the wording of either page changes. */
   effectiveDate: "November 16, 2026",
   /** Must equal RESULT_RETENTION_DAYS of the deployment. */

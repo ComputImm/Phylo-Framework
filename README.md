@@ -42,7 +42,7 @@ tests.
 ## Quick start on your own machine
 
 ```bash
-git clone git@github.com:Kiana8181/phylo-framework.git
+git clone https://github.com/Kiana8181/phylo-framework.git
 cd phylo-framework
 cp .env.example .env
 docker compose --profile dev up -d --build
@@ -81,7 +81,7 @@ start with the example secrets. The server needs Docker with Compose 2.17+ and
 nothing else.
 
 ```bash
-git clone git@github.com:Kiana8181/phylo-framework.git
+git clone https://github.com/Kiana8181/phylo-framework.git
 cd phylo-framework
 cp .env.example .env     # then set the values listed below
 ./run.sh check           # can it start? changes nothing
