@@ -5,7 +5,7 @@ import { getMethodContent } from "@/features/docs/content";
 import { METHOD_IDS } from "@/features/docs/types";
 import { LEGAL } from "@/lib/legal";
 
-const SOURCE_URL = "https://github.com/Kiana8181/phylo-framework";
+const SOURCE_URL = "https://github.com/ComputImm/Phylo-Framework";
 const LICENSE_URL = `${SOURCE_URL}/blob/main/LICENSE`;
 
 const COLUMNS = [
@@ -60,8 +60,8 @@ export function SiteFooter() {
           <div>
             <PhyloLogo href="/" className="-ml-1 w-fit" />
             <p className="mt-4 max-w-xs text-sm leading-6 text-muted-foreground">
-              One reproducible workflow for B-cell lineage reconstruction. Every run is recorded with
-              its parameters, its seed and its software version.
+              One reproducible workflow for B-cell lineage reconstruction. Every run is recorded with its
+              parameters, its seed and its software version.
             </p>
             <a
               href={SOURCE_URL}
